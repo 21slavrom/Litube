@@ -16,6 +16,7 @@ import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.ViewTreeObserver;
+import android.view.ViewParent;
 import android.view.animation.OvershootInterpolator;
 import android.widget.ImageButton;
 import android.widget.TextView;
@@ -59,7 +60,6 @@ import lombok.Getter;
 @AndroidEntryPoint
 @ActivityScoped
 public class LitePlayerView extends PlayerView {
-
 	private static final float SUBTITLE_LINE_FRACTION = 0.92f;
 	private static final float SUBTITLE_POSITION_FRACTION = 0.5f;
 	private static final int MINI_CONTROL_DEFAULT_SPACE_DP = 18;
@@ -114,6 +114,12 @@ public class LitePlayerView extends PlayerView {
 	private boolean miniPlayerResizing;
 	@Nullable
 	private View miniPlayerPendingTapTarget;
+	private boolean parentInsetsSuppressed;
+	private int parentPaddingLeft;
+	private int parentPaddingTop;
+	private int parentPaddingRight;
+	private int parentPaddingBottom;
+	private boolean portraitNormalStateRequested;
 	private float miniPlayerPinchStartDistancePx;
 	private int miniPlayerPinchStartWidthPx;
 	private int miniPlayerWidthOverrideDp = MiniPlayerLayout.NO_WIDTH_OVERRIDE_DP;
@@ -764,7 +770,12 @@ public class LitePlayerView extends PlayerView {
 
 	private void applyNormalState(int defaultResizeMode) {
 		isFs = false;
-		activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+		setParentInsetsSuppressed(false);
+		int requestedOrientation = portraitNormalStateRequested
+						? ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+						: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
+		activity.setRequestedOrientation(requestedOrientation);
+		portraitNormalStateRequested = false;
 		ViewUtils.setFullscreen(activity.getWindow().getDecorView(), false);
 		updatePlayerLayout(false);
 		setResizeMode(inAppMiniPlayer ? AspectRatioFrameLayout.RESIZE_MODE_FIT : defaultResizeMode);
@@ -779,6 +790,7 @@ public class LitePlayerView extends PlayerView {
 		if (previousState == ControllerState.Mode.NORMAL && !activity.isInPictureInPictureMode()) {
 			normalHeight = playerHeight;
 		}
+		setParentInsetsSuppressed(true);
 		activity.setRequestedOrientation(fsOrientation);
 		ViewUtils.setFullscreen(activity.getWindow().getDecorView(), true);
 		updatePlayerLayout(true);
@@ -789,12 +801,36 @@ public class LitePlayerView extends PlayerView {
 
 	private void applyPictureInPictureState(@NonNull ControllerState.Mode previousState) {
 		isFs = false;
+		setParentInsetsSuppressed(false);
 		if (previousState == ControllerState.Mode.NORMAL) {
 			normalHeight = playerHeight;
 		}
 		updatePlayerLayout(true);
 		setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
 		updateMiniPlayerCornerClipping();
+	}
+
+	public void requestPortraitNormalState() {
+		portraitNormalStateRequested = true;
+	}
+
+	private void setParentInsetsSuppressed(boolean suppressed) {
+		ViewParent parent = getParent();
+		if (!(parent instanceof View parentView)) return;
+		if (suppressed) {
+			if (parentInsetsSuppressed) return;
+			parentPaddingLeft = parentView.getPaddingLeft();
+			parentPaddingTop = parentView.getPaddingTop();
+			parentPaddingRight = parentView.getPaddingRight();
+			parentPaddingBottom = parentView.getPaddingBottom();
+			parentView.setPadding(0, 0, 0, 0);
+			parentInsetsSuppressed = true;
+			return;
+		}
+		if (!parentInsetsSuppressed) return;
+		parentView.setPadding(parentPaddingLeft, parentPaddingTop, parentPaddingRight, parentPaddingBottom);
+		parentInsetsSuppressed = false;
+		ViewCompat.requestApplyInsets(parentView);
 	}
 
 	private void updateFullscreenButton(boolean fullscreen) {

@@ -7,10 +7,12 @@ import android.content.res.Configuration;
 import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.text.format.DateUtils;
 import android.util.TypedValue;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
+import android.view.OrientationEventListener;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -133,6 +135,7 @@ enum PlaybackPrimaryAction {
 @UnstableApi
 public class Controller {
 	static final float DISABLED_BUTTON_ALPHA = 0.38f;
+	private static final long PHYSICAL_ORIENTATION_STABLE_MS = 300L;
 	@NonNull
 	private final Activity activity;
 	@NonNull
@@ -148,6 +151,8 @@ public class Controller {
 	@NonNull
 	private final ExtensionManager extensionManager;
 	@NonNull
+	private final OrientationEventListener portraitUnlockListener;
+	@NonNull
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	@Nullable
 	private TextView hintText;
@@ -155,13 +160,20 @@ public class Controller {
 	private boolean longPress = false;
 	@NonNull
 	private ControllerState state = ControllerState.initial();
-	private boolean block = false;
-	// Exit fullscreen after portrait.
-	private boolean pending = false;
 	private boolean autoFs = false;
 	private int lastSyncedOrientation = Configuration.ORIENTATION_UNDEFINED;
 	private boolean lastSyncedAutoRotate = false;
 	private boolean rotationSynced = false;
+	private boolean portraitExitLocked;
+	private boolean suppressAutoEnterUntilPortrait;
+	private int physicalOrientation = Configuration.ORIENTATION_UNDEFINED;
+	private boolean portraitExitStartedPortrait;
+	private boolean portraitExitSawLandscape;
+	private long portraitExitSinceMs;
+	private boolean pendingAutoEnterOnPhysicalLandscape;
+	private boolean manualFullscreenSensorExit;
+	private boolean manualFullscreenSawLandscape;
+	private long manualFullscreenPortraitSinceMs;
 	private long lastVideoRenderedCount = 0;
 	private long lastFpsUpdateTime = 0;
 	private float fps = 0;
@@ -175,6 +187,18 @@ public class Controller {
 		this.zoomListener = zoomListener;
 		this.tabManager = tabManager;
 		this.extensionManager = extensionManager;
+		this.portraitUnlockListener = new OrientationEventListener(activity) {
+			@Override
+			public void onOrientationChanged(final int degrees) {
+				if (degrees == OrientationEventListener.ORIENTATION_UNKNOWN) {
+					return;
+				}
+				handlePhysicalOrientation(degrees);
+			}
+		};
+		if (portraitUnlockListener.canDetectOrientation()) {
+			portraitUnlockListener.enable();
+		}
 		this.playerView.setOnMiniPlayerBackgroundTap(() -> setControlsVisible(!isControlsVisible()));
 		this.zoomListener.setOnShowReset(show ->
 						showReset(show && isControlsVisible() && state.mode() == ControllerState.Mode.FULLSCREEN_UNLOCK));
@@ -213,30 +237,34 @@ public class Controller {
 	                             final boolean fullscreen,
 	                             final boolean pip,
 	                             final boolean mini,
+	                             final int previousOrientation,
 	                             final int orientation,
-	                             final boolean blocked) {
+	                             final boolean physicalLandscape,
+	                             final boolean suppressed) {
 		return watch
 						&& rotate
 						&& visible
 						&& !fullscreen
 						&& !pip
 						&& !mini
-						&& orientation == Configuration.ORIENTATION_LANDSCAPE
-						&& !blocked;
+						&& !suppressed
+						&& physicalLandscape
+						&& previousOrientation == Configuration.ORIENTATION_PORTRAIT
+						&& orientation == Configuration.ORIENTATION_LANDSCAPE;
 	}
 
 	static boolean shouldExitFs(boolean fullscreen,
+	                            final boolean autoFullscreen,
+	                            final int previousOrientation,
 	                            final int orientation) {
 		return fullscreen
-						&& orientation == Configuration.ORIENTATION_PORTRAIT;
+						&& orientation == Configuration.ORIENTATION_PORTRAIT
+						&& (autoFullscreen || previousOrientation == Configuration.ORIENTATION_LANDSCAPE);
 	}
 
-	static boolean shouldLockPortrait(boolean watch,
-	                                  final boolean fullscreen,
-	                                  final int orientation) {
-		return watch
-						&& fullscreen
-						&& orientation == Configuration.ORIENTATION_LANDSCAPE;
+	static boolean shouldRequestPortraitOnManualExit(final boolean fullscreen,
+	                                                 final int orientation) {
+		return fullscreen && orientation == Configuration.ORIENTATION_LANDSCAPE;
 	}
 
 	static int fsOrientation(boolean autoFs, boolean portrait) {
@@ -244,6 +272,19 @@ public class Controller {
 		return portrait
 						? ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
 						: ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
+	}
+
+	private static int classifyPhysicalOrientation(final int degrees) {
+		if (degrees <= 40
+						|| degrees >= 320
+						|| (degrees >= 140 && degrees <= 220)) {
+			return Configuration.ORIENTATION_PORTRAIT;
+		}
+		if ((degrees >= 50 && degrees <= 130)
+						|| (degrees >= 230 && degrees <= 310)) {
+			return Configuration.ORIENTATION_LANDSCAPE;
+		}
+		return Configuration.ORIENTATION_UNDEFINED;
 	}
 
 	static boolean shouldAutoHideControls(boolean isPlaying, boolean isInPictureInPicture) {
@@ -795,30 +836,28 @@ public class Controller {
 	}
 
 	public void enterFullscreen() {
-		if (shouldEnterFs(
-						isWatch(),
-						DeviceUtils.isRotateOn(activity),
-						playerView.getVisibility() == View.VISIBLE,
-						state.isFullscreen(),
-						state.isInPictureInPicture(),
-						state.isInMiniPlayer(),
-						orientation(),
-						false)) {
-			enterAutoFs();
-			return;
-		}
+		if (state.isFullscreen()) return;
 		autoFs = false;
+		pendingAutoEnterOnPhysicalLandscape = false;
+		manualFullscreenSensorExit = true;
+		manualFullscreenSawLandscape =
+						physicalOrientation == Configuration.ORIENTATION_LANDSCAPE;
+		manualFullscreenPortraitSinceMs = 0L;
+		if (portraitExitLocked) {
+			releaseManualPortraitLock();
+		} else {
+			suppressAutoEnterUntilPortrait = false;
+		}
 		final ControllerState.Mode previousState = state.mode();
 		state = state.enterFullscreen();
 		applyControllerState(previousState, true);
 	}
 
 	public void exitFullscreen() {
-		if (shouldLockPortrait(isWatch(), state.isFullscreen(), orientation())) {
-			pending = true;
-			block = true;
-			activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-			return;
+		if (!state.isFullscreen()) return;
+		if (shouldRequestPortraitOnManualExit(true, orientation())) {
+			beginManualPortraitLock();
+			playerView.requestPortraitNormalState();
 		}
 		exitNow();
 	}
@@ -830,12 +869,115 @@ public class Controller {
 	}
 
 	private void exitNow() {
-		pending = false;
 		autoFs = false;
+		pendingAutoEnterOnPhysicalLandscape = false;
+		manualFullscreenSensorExit = false;
+		manualFullscreenSawLandscape = false;
+		manualFullscreenPortraitSinceMs = 0L;
 		final ControllerState.Mode previousState = state.mode();
 		state = state.exitFullscreen();
 		applyControllerState(previousState, true);
 		zoomListener.reset();
+	}
+
+	private void beginManualPortraitLock() {
+		portraitExitLocked = true;
+		suppressAutoEnterUntilPortrait = true;
+		portraitExitStartedPortrait =
+						physicalOrientation == Configuration.ORIENTATION_PORTRAIT;
+		portraitExitSawLandscape =
+						physicalOrientation == Configuration.ORIENTATION_LANDSCAPE;
+		portraitExitSinceMs = 0L;
+	}
+
+	private void releaseManualPortraitLock() {
+		portraitExitLocked = false;
+		suppressAutoEnterUntilPortrait = false;
+		pendingAutoEnterOnPhysicalLandscape = false;
+		manualFullscreenSensorExit = false;
+		portraitExitStartedPortrait = false;
+		portraitExitSawLandscape = false;
+		portraitExitSinceMs = 0L;
+		activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+	}
+
+	private void handlePhysicalOrientation(final int degrees) {
+		int currentPhysicalOrientation = classifyPhysicalOrientation(degrees);
+		if (currentPhysicalOrientation == Configuration.ORIENTATION_UNDEFINED) {
+			return;
+		}
+		if (physicalOrientation != currentPhysicalOrientation) {
+			physicalOrientation = currentPhysicalOrientation;
+		}
+		if (currentPhysicalOrientation == Configuration.ORIENTATION_LANDSCAPE) {
+			if (manualFullscreenSensorExit && state.isFullscreen() && !autoFs) {
+				manualFullscreenSawLandscape = true;
+				manualFullscreenPortraitSinceMs = 0L;
+			}
+			tryPendingPhysicalLandscapeAutoEnter();
+		} else if (exitManualFullscreenOnPhysicalPortrait()) {
+			return;
+		}
+		if (!portraitExitLocked) {
+			return;
+		}
+		if (currentPhysicalOrientation == Configuration.ORIENTATION_LANDSCAPE) {
+			portraitExitSawLandscape = true;
+			portraitExitSinceMs = 0L;
+			return;
+		}
+		if (!portraitExitStartedPortrait && !portraitExitSawLandscape) {
+			return;
+		}
+		long now = SystemClock.elapsedRealtime();
+		if (portraitExitSinceMs == 0L) {
+			portraitExitSinceMs = now;
+			return;
+		}
+		if (now - portraitExitSinceMs < PHYSICAL_ORIENTATION_STABLE_MS) {
+			return;
+		}
+		releaseManualPortraitLock();
+	}
+
+	private void tryPendingPhysicalLandscapeAutoEnter() {
+		if (!pendingAutoEnterOnPhysicalLandscape) {
+			return;
+		}
+		boolean shouldEnter = shouldEnterFs(
+						true,
+						lastSyncedAutoRotate,
+						playerView.getVisibility() == View.VISIBLE,
+						state.isFullscreen(),
+						state.isInPictureInPicture(),
+						state.isInMiniPlayer(),
+						Configuration.ORIENTATION_PORTRAIT,
+						lastSyncedOrientation,
+						true,
+						suppressAutoEnterUntilPortrait);
+		pendingAutoEnterOnPhysicalLandscape = false;
+		if (shouldEnter) {
+			enterAutoFs();
+		}
+	}
+
+	private boolean exitManualFullscreenOnPhysicalPortrait() {
+		if (!manualFullscreenSensorExit || autoFs || !state.isFullscreen()) {
+			return false;
+		}
+		if (!manualFullscreenSawLandscape) {
+			return false;
+		}
+		long now = SystemClock.elapsedRealtime();
+		if (manualFullscreenPortraitSinceMs == 0L) {
+			manualFullscreenPortraitSinceMs = now;
+			return false;
+		}
+		if (now - manualFullscreenPortraitSinceMs < PHYSICAL_ORIENTATION_STABLE_MS) {
+			return false;
+		}
+		exitNow();
+		return true;
 	}
 
 	public void syncRotation(boolean autoRotate, int orientation) {
@@ -844,6 +986,7 @@ public class Controller {
 						&& autoRotate == lastSyncedAutoRotate) {
 			return;
 		}
+		int previousOrientation = lastSyncedOrientation;
 		lastSyncedOrientation = orientation;
 		lastSyncedAutoRotate = autoRotate;
 		rotationSynced = true;
@@ -851,42 +994,72 @@ public class Controller {
 						|| state.isInPictureInPicture()
 						|| state.isInMiniPlayer()
 						|| playerView.getVisibility() != View.VISIBLE) {
+			pendingAutoEnterOnPhysicalLandscape = false;
 			clearRotation();
 			return;
 		}
 		if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-			if (pending) {
-				pending = false;
-				if (state.isFullscreen()) exitNow();
-				return;
+			pendingAutoEnterOnPhysicalLandscape = false;
+			if (!portraitExitLocked) {
+				suppressAutoEnterUntilPortrait = false;
 			}
-			block = false;
-			if (shouldExitFs(state.isFullscreen(), orientation)) {
+			boolean shouldExit = shouldExitFs(state.isFullscreen(), autoFs, previousOrientation, orientation);
+			if (shouldExit) {
 				exitNow();
 			}
 			return;
 		}
-		if (orientation != Configuration.ORIENTATION_LANDSCAPE || pending) return;
-		if (shouldEnterFs(
+		if (orientation != Configuration.ORIENTATION_LANDSCAPE) {
+			return;
+		}
+		boolean physicalLandscape = physicalOrientation == Configuration.ORIENTATION_UNDEFINED
+						|| physicalOrientation == Configuration.ORIENTATION_LANDSCAPE;
+		boolean eligibleIfPhysicalLandscape = shouldEnterFs(
 						true,
 						autoRotate,
 						playerView.getVisibility() == View.VISIBLE,
 						state.isFullscreen(),
 						state.isInPictureInPicture(),
 						state.isInMiniPlayer(),
+						previousOrientation,
 						orientation,
-						block)) {
+						true,
+						suppressAutoEnterUntilPortrait);
+		boolean shouldEnter = shouldEnterFs(
+						true,
+						autoRotate,
+						playerView.getVisibility() == View.VISIBLE,
+						state.isFullscreen(),
+						state.isInPictureInPicture(),
+						state.isInMiniPlayer(),
+						previousOrientation,
+						orientation,
+						physicalLandscape,
+						suppressAutoEnterUntilPortrait);
+		pendingAutoEnterOnPhysicalLandscape = !shouldEnter
+						&& eligibleIfPhysicalLandscape
+						&& physicalOrientation == Configuration.ORIENTATION_PORTRAIT;
+		if (shouldEnter) {
 			enterAutoFs();
 		}
 	}
 
 	public void clearRotation() {
-		block = false;
-		pending = false;
 		autoFs = false;
+		portraitExitLocked = false;
+		suppressAutoEnterUntilPortrait = false;
+		pendingAutoEnterOnPhysicalLandscape = false;
+		manualFullscreenSensorExit = false;
+		portraitExitStartedPortrait = false;
+		portraitExitSawLandscape = false;
+		portraitExitSinceMs = 0L;
 		rotationSynced = false;
 		lastSyncedOrientation = Configuration.ORIENTATION_UNDEFINED;
 		lastSyncedAutoRotate = false;
+	}
+
+	public void release() {
+		portraitUnlockListener.disable();
 	}
 
 	public void onPictureInPictureModeChanged(boolean isInPiP) {
@@ -992,7 +1165,6 @@ public class Controller {
 
 	private void enterAutoFs() {
 		autoFs = true;
-		pending = false;
 		final ControllerState.Mode previousState = state.mode();
 		state = state.enterFullscreen();
 		applyControllerState(previousState, true);

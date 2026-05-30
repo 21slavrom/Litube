@@ -1,8 +1,11 @@
 package com.hhst.youtubelite.gallery;
 
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.activity.EdgeToEdge;
@@ -27,6 +30,7 @@ import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +44,8 @@ import dagger.hilt.android.AndroidEntryPoint;
  */
 @AndroidEntryPoint
 public class GalleryActivity extends AppCompatActivity {
+	private static final String TAG = "GalleryActivity";
+	private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
 	private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
 
 	// Thumbnail names used for saving or caching.
@@ -108,38 +114,48 @@ public class GalleryActivity extends AppCompatActivity {
 				saveCurrentImage(url, filename);
 				return;
 			case 1: // Share
+				Context appContext = getApplicationContext();
+				String authority = getPackageName() + ".provider";
+				String chooserTitle = getString(R.string.share_thumbnail);
+				String errorMessage = getString(R.string.failed_to_download_thumbnail);
 				File file = new File(getCacheDir(), filename + ".jpg");
+				List<File> cachedFiles = files;
+				WeakReference<GalleryActivity> activityRef = new WeakReference<>(this);
 				// Cache the thumbnail, then share the local file.
 				ioExecutor.execute(() -> {
 					try {
 						if (!file.exists()) FileUtils.copyURLToFile(new URL(url), file);
-						files.set(pos, file);
-						Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".provider", file);
+						if (pos < cachedFiles.size()) cachedFiles.set(pos, file);
+						Uri uri = FileProvider.getUriForFile(appContext, authority, file);
 						Intent shareIntent = new Intent(Intent.ACTION_SEND);
 						shareIntent.setType("image/*");
 						shareIntent.putExtra(Intent.EXTRA_STREAM, uri);
 						shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-						runOnUiThread(() -> {
-							if (isFinishing() || isDestroyed()) return;
-							startActivity(Intent.createChooser(shareIntent, getString(R.string.share_thumbnail)));
+						MAIN_HANDLER.post(() -> {
+							GalleryActivity activity = activityRef.get();
+							if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
+							activity.startActivity(Intent.createChooser(shareIntent, chooserTitle));
 						});
 					} catch (IOException e) {
-						Log.e(getString(R.string.failed_to_download_thumbnail), Log.getStackTraceString(e));
-						ToastUtils.show(this, R.string.failed_to_download_thumbnail);
+						Log.e(TAG, errorMessage, e);
+						ToastUtils.show(appContext, R.string.failed_to_download_thumbnail);
 					}
 				});
 		}
 	}
 
 	private void saveCurrentImage(@NonNull String url, @Nullable String filename) {
+		Context appContext = getApplicationContext();
+		String displayName = sanitizeFileName(filename) + ".jpg";
+		String downloadsLabel = DownloadStorageUtils.getDownloadsLocationLabel(appContext);
+		String errorMessage = getString(R.string.failed_to_download_thumbnail);
 		ioExecutor.execute(() -> {
 			try {
-				String displayName = sanitizeFileName(filename) + ".jpg";
-				DownloadStorageUtils.saveUrlToDownloads(this, new URL(url), displayName);
-				ToastUtils.show(this, getString(R.string.download_finished, displayName, DownloadStorageUtils.getDownloadsLocationLabel(this)));
+				DownloadStorageUtils.saveUrlToDownloads(appContext, new URL(url), displayName);
+				ToastUtils.show(appContext, appContext.getString(R.string.download_finished, displayName, downloadsLabel));
 			} catch (Exception e) {
-				Log.e(getString(R.string.failed_to_download_thumbnail), Log.getStackTraceString(e));
-				ToastUtils.show(this, R.string.failed_to_download_thumbnail);
+				Log.e(TAG, errorMessage, e);
+				ToastUtils.show(appContext, R.string.failed_to_download_thumbnail);
 			}
 		});
 	}
@@ -152,10 +168,13 @@ public class GalleryActivity extends AppCompatActivity {
 
 	@Override
 	public void finish() {
-		ioExecutor.execute(() -> {
-			for (File file : files) if (file != null) FileUtils.deleteQuietly(file);
-		});
+		List<File> cachedFiles = new ArrayList<>(files);
+		ioExecutor.execute(() -> deleteQuietly(cachedFiles));
 		super.finish();
+	}
+
+	private static void deleteQuietly(@NonNull List<File> files) {
+		for (File file : files) if (file != null) FileUtils.deleteQuietly(file);
 	}
 
 	@Override

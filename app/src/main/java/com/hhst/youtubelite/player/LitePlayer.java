@@ -458,6 +458,7 @@ public class LitePlayer {
 		wasInPip = false;
 		onRestore = null;
 		onClose = null;
+		controller.release();
 		activity.runOnUiThread(() -> {
 			playerView.disableAutoPiP();
 			playerView.setMiniPlayerCallbacks(null, null);
