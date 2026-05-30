@@ -1223,7 +1223,7 @@ try {
                 if (saveButton) {
                     const chatButton = saveButton.cloneNode(true);
                     chatButton.id = 'chatButton';
-                    const textContent = chatButton.querySelector('.yt-spec-button-shape-next__button-text-content');
+                    const textContent = chatButton.querySelector('.ytSpecButtonShapeNextButtonTextContent');
                     if (textContent) {
                         textContent.innerText = getLocalizedText('chat');
                     }
@@ -1378,7 +1378,7 @@ try {
                         const downloadButton = saveButton.cloneNode(true);
                         downloadButton.id = 'downloadButton';
                         removeActionButtonBehavior(downloadButton);
-                        const textContent = downloadButton.querySelector('.yt-spec-button-shape-next__button-text-content');
+                        const textContent = downloadButton.querySelector('.ytSpecButtonShapeNextButtonTextContent');
                         if (textContent) {
                             textContent.innerText = getLocalizedText('download');
                         }
@@ -1402,7 +1402,7 @@ try {
                         const queueButton = saveButton.cloneNode(true);
                         queueButton.id = 'queueButton';
                         removeActionButtonBehavior(queueButton);
-                        const queueText = queueButton.querySelector('.yt-spec-button-shape-next__button-text-content');
+                        const queueText = queueButton.querySelector('.ytSpecButtonShapeNextButtonTextContent');
                         if (queueText) {
                             queueText.innerText = getLocalizedText('add_to_queue');
                         }
@@ -1429,7 +1429,7 @@ try {
                         const openWithButton = saveButton.cloneNode(true);
                         openWithButton.id = 'openWithButton';
                         removeActionButtonBehavior(openWithButton);
-                        const openWithText = openWithButton.querySelector('.yt-spec-button-shape-next__button-text-content');
+                        const openWithText = openWithButton.querySelector('.ytSpecButtonShapeNextButtonTextContent');
                         if (openWithText) {
                             openWithText.innerText = getLocalizedText('open_with');
                         }
