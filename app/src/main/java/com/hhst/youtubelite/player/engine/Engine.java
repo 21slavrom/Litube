@@ -54,6 +54,9 @@ import org.schabi.newpipe.extractor.stream.StreamSegment;
 import org.schabi.newpipe.extractor.stream.SubtitlesStream;
 import org.schabi.newpipe.extractor.stream.VideoStream;
 
+import java.net.ConnectException;
+import java.net.NoRouteToHostException;
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -370,34 +373,35 @@ public class Engine {
 	}
 
 	public boolean recoverFromPlaybackError(@NonNull PlaybackException error) {
-		if (!isHttp403(error)) {
+		PlaybackRecoveryReason reason = playbackRecoveryReason(error);
+		if (reason == null) {
 			return false;
 		}
 		State state = state();
 		if (state == null || state.plan().getMode() != PlaybackMode.ADAPTIVE) {
 			return false;
 		}
-		Log.w(TAG, "adaptive HTTP 403; trying fallback videoId=" + state.video().getId());
 		rememberFailedAdaptiveCandidates(state.plan());
 		PlaybackPlan adaptiveFallback = PlaybackPlanner.adaptiveFallbackPlan(
 						state.deliveries(),
-						prefs.getQuality(),
+						prefs.getPreferredQuality(),
 						null,
 						this::isFailedAdaptiveCandidate);
 		if (adaptiveFallback != null) {
-			return recoverWithPlan(state, adaptiveFallback, false);
+			return recoverWithPlan(state, adaptiveFallback, reason, false);
 		}
 		PlaybackPlan muxedFallback = PlaybackPlanner.muxedFallbackPlan(
 						state.deliveries(),
-						prefs.getQuality());
+						prefs.getPreferredQuality());
 		if (muxedFallback == null) {
 			return false;
 		}
-		return recoverWithPlan(state, muxedFallback, true);
+		return recoverWithPlan(state, muxedFallback, reason, true);
 	}
 
 	private boolean recoverWithPlan(@NonNull State state,
 	                                @NonNull PlaybackPlan fallback,
+	                                @NonNull PlaybackRecoveryReason reason,
 	                                boolean rememberVideoFallback) {
 		long position = Math.max(0L, player.getCurrentPosition());
 		PlaybackParameters speed = player.getPlaybackParameters();
@@ -413,10 +417,10 @@ public class Engine {
 			player.setPlaybackParameters(speed);
 			player.prepare();
 			player.setPlayWhenReady(playWhenReady);
-			if (rememberVideoFallback) {
+			if (rememberVideoFallback && reason == PlaybackRecoveryReason.HTTP_403) {
 				prefs.markAdaptiveMuxedFallback(state.video().getId());
 			}
-			Log.w(TAG, "recovered from adaptive HTTP 403 with " + fallback.getMode()
+			Log.w(TAG, "recovered from adaptive " + reason.logLabel + " with " + fallback.getMode()
 							+ " videoId=" + state.video().getId());
 			return true;
 		} catch (RuntimeException e) {
@@ -742,8 +746,8 @@ public class Engine {
 		if (plan == null || plan.getDelivery() == null || !plan.getDelivery().isTrackLock()) {
 			return;
 		}
-		String quality = prefs.getQuality();
-		if (quality.isEmpty()) {
+		String quality = prefs.getPreferredQuality();
+		if (quality == null || quality.isEmpty()) {
 			return;
 		}
 		int height = StringUtils.parseHeight(quality);
@@ -761,7 +765,7 @@ public class Engine {
 		if (plan == null || plan.getDelivery() == null) {
 			builder.clearVideoSizeConstraints();
 		} else {
-			int height = StringUtils.parseHeight(prefs.getQuality());
+			int height = StringUtils.parseHeight(prefs.getPreferredQuality());
 			if (height > 0) {
 				builder.setMaxVideoSize(Integer.MAX_VALUE, height);
 				if (plan.getDelivery().isTrackLock()) {
@@ -770,6 +774,8 @@ public class Engine {
 					builder.clearVideoSizeConstraints();
 					builder.setMaxVideoSize(Integer.MAX_VALUE, height);
 				}
+			} else {
+				builder.clearVideoSizeConstraints();
 			}
 		}
 		trackSelector.setParameters(builder.build());
@@ -942,7 +948,8 @@ public class Engine {
 						|| plan.getMode() == PlaybackMode.LIVE_HLS);
 	}
 
-	private static boolean isHttp403(@NonNull Throwable throwable) {
+	@Nullable
+	static PlaybackRecoveryReason playbackRecoveryReason(@NonNull Throwable throwable) {
 		List<Throwable> pending = new ArrayList<>();
 		List<Throwable> visited = new ArrayList<>();
 		pending.add(throwable);
@@ -954,12 +961,32 @@ public class Engine {
 			visited.add(current);
 			if (current instanceof HttpDataSource.InvalidResponseCodeException http
 							&& http.responseCode == 403) {
-				return true;
+				return PlaybackRecoveryReason.HTTP_403;
+			}
+			if (current instanceof HttpDataSource.HttpDataSourceException http
+							&& http.type == HttpDataSource.HttpDataSourceException.TYPE_OPEN
+							&& hasCause(http, SocketTimeoutException.class, ConnectException.class, NoRouteToHostException.class)) {
+				return PlaybackRecoveryReason.CONNECTION_OPEN_FAILED;
 			}
 			if (current.getCause() != null) {
 				pending.add(current.getCause());
 			}
 			Collections.addAll(pending, current.getSuppressed());
+		}
+		return null;
+	}
+
+	@SafeVarargs
+	private static boolean hasCause(@NonNull Throwable throwable,
+	                                @NonNull Class<? extends Throwable>... causeTypes) {
+		Throwable current = throwable;
+		while (current != null) {
+			for (Class<? extends Throwable> causeType : causeTypes) {
+				if (causeType.isInstance(current)) {
+					return true;
+				}
+			}
+			current = current.getCause();
 		}
 		return false;
 	}
@@ -988,5 +1015,17 @@ public class Engine {
 	                     @NonNull StreamCatalog catalog,
 	                     @NonNull DeliveryCatalog deliveries,
 	                     @NonNull PlaybackPlan plan) {
+	}
+
+	enum PlaybackRecoveryReason {
+		HTTP_403("HTTP 403"),
+		CONNECTION_OPEN_FAILED("connection open failure");
+
+		@NonNull
+		private final String logLabel;
+
+		PlaybackRecoveryReason(@NonNull String logLabel) {
+			this.logLabel = logLabel;
+		}
 	}
 }

@@ -101,6 +101,16 @@ public final class YoutubeAuth {
 	}
 
 	@Nullable
+	static String pageId(@Nullable String dataSyncId) {
+		return sync(dataSyncId).pageId();
+	}
+
+	@Nullable
+	static String userId(@Nullable String dataSyncId) {
+		return sync(dataSyncId).userId();
+	}
+
+	@Nullable
 	private static String origin(@NonNull String url) {
 		try {
 			URI uri = URI.create(url);

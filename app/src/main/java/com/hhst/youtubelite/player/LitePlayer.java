@@ -36,6 +36,11 @@ import com.tencent.mmkv.MMKV;
 
 import org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException;
 
+import java.io.IOException;
+import java.net.ConnectException;
+import java.net.NoRouteToHostException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -246,9 +251,10 @@ public class LitePlayer {
 						}, executor).thenCompose(ignored -> extractor.getInfo(url, session))
 						.thenApply(details -> {
 							String lang = kv.decodeString(KEY_LAST_AUDIO_LANG, "und");
-							PlaybackPlan plan = PlaybackPlanner.plan(details.deliveries(), prefs.getQuality(), lang);
+							String preferredQuality = prefs.getPreferredQuality();
+							PlaybackPlan plan = PlaybackPlanner.plan(details.deliveries(), preferredQuality, lang);
 							if (prefs.shouldUseAdaptiveMuxedFallback(videoId) && plan.getMode() == PlaybackMode.ADAPTIVE) {
-								PlaybackPlan fallback = PlaybackPlanner.muxedFallbackPlan(details.deliveries(), prefs.getQuality());
+								PlaybackPlan fallback = PlaybackPlanner.muxedFallbackPlan(details.deliveries(), preferredQuality);
 								if (fallback != null) {
 									plan = fallback;
 								}
@@ -302,10 +308,80 @@ public class LitePlayer {
 
 	@NonNull
 	private ExtractionException classifyException(@NonNull Exception exception) {
+		return classifyExtractionException(exception);
+	}
+
+	@NonNull
+	static ExtractionException classifyExtractionException(@NonNull Exception exception) {
 		if (containsException(exception, SignInConfirmNotBotException.class)) {
 			return new LoginRequiredExtractionException(exception);
 		}
+		if (containsException(exception, org.schabi.newpipe.extractor.exceptions.ReCaptchaException.class)) {
+			return new LoginRequiredExtractionException(exception);
+		}
+		if (containsException(exception, org.schabi.newpipe.extractor.exceptions.AgeRestrictedContentException.class)) {
+			return new ExtractionException("This video is age restricted and could not be extracted.", exception);
+		}
+		if (containsException(exception, org.schabi.newpipe.extractor.exceptions.GeographicRestrictionException.class)
+						|| containsException(exception, org.schabi.newpipe.extractor.exceptions.UnsupportedContentInCountryException.class)) {
+			return new ExtractionException("This video is not available in your region.", exception);
+		}
+		if (containsException(exception, org.schabi.newpipe.extractor.exceptions.PrivateContentException.class)) {
+			return new ExtractionException("This video is private or requires permission.", exception);
+		}
+		if (containsException(exception, org.schabi.newpipe.extractor.exceptions.PaidContentException.class)
+						|| containsException(exception, org.schabi.newpipe.extractor.exceptions.YoutubeMusicPremiumContentException.class)
+						|| containsException(exception, org.schabi.newpipe.extractor.exceptions.ContentNotSupportedException.class)) {
+			return new ExtractionException("This video type is not supported.", exception);
+		}
+		if (containsException(exception, SocketTimeoutException.class)
+						|| containsException(exception, ConnectException.class)
+						|| containsException(exception, NoRouteToHostException.class)
+						|| containsException(exception, UnknownHostException.class)) {
+			return new ExtractionException("Network error while extracting video info.", exception);
+		}
+		if (containsException(exception, IOException.class)) {
+			return new ExtractionException("I/O error while extracting video info.", exception);
+		}
+		org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException unavailable =
+						firstException(exception, org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException.class);
+		if (unavailable != null) {
+			return new ExtractionException(messageOrDefault(unavailable, "This video is not available."), exception);
+		}
+		org.schabi.newpipe.extractor.exceptions.ExtractionException extraction =
+						firstException(exception, org.schabi.newpipe.extractor.exceptions.ExtractionException.class);
+		if (extraction != null) {
+			return new ExtractionException("Extract failed: " + messageOrDefault(extraction, extraction.getClass().getSimpleName()), exception);
+		}
 		return new ExtractionException("Extract failed", exception);
+	}
+
+	@Nullable
+	private static <T extends Throwable> T firstException(@Nullable Throwable throwable,
+	                                                     @NonNull Class<T> throwableClass) {
+		if (throwable == null) return null;
+
+		Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+		List<Throwable> pending = new ArrayList<>();
+		pending.add(throwable);
+
+		for (int i = 0; i < pending.size(); i++) {
+			Throwable th = pending.get(i);
+			if (th == null || !visited.add(th)) continue;
+			if (throwableClass.isInstance(th)) return throwableClass.cast(th);
+
+			Throwable cause = th.getCause();
+			if (cause != null) pending.add(cause);
+			Collections.addAll(pending, th.getSuppressed());
+		}
+		return null;
+	}
+
+	@NonNull
+	private static String messageOrDefault(@NonNull Throwable throwable,
+	                                       @NonNull String fallback) {
+		String message = throwable.getMessage();
+		return message == null || message.isBlank() ? fallback : message;
 	}
 
 	public void hide() {

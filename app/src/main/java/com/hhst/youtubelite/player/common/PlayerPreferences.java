@@ -79,8 +79,14 @@ public final class PlayerPreferences {
 
 	@NonNull
 	public String getQuality() {
+		String quality = getPreferredQuality();
+		return quality == null ? DEFAULT_QUALITY : quality;
+	}
+
+	@Nullable
+	public String getPreferredQuality() {
 		boolean enabled = extensionManager.isEnabled(com.hhst.youtubelite.extension.Constant.REMEMBER_QUALITY);
-		if (!enabled) return DEFAULT_QUALITY;
+		if (!enabled) return null;
 		return mmkv.decodeString(KEY_VIDEO_QUALITY, DEFAULT_QUALITY);
 	}
 

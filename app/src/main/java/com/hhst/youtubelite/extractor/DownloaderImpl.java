@@ -1,7 +1,5 @@
 package com.hhst.youtubelite.extractor;
 
-import android.util.Log;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -39,7 +37,6 @@ import okhttp3.ResponseBody;
 @Singleton
 public final class DownloaderImpl extends Downloader {
 	private static final String YOUTUBE_RESTRICTED_MODE_COOKIE = "PREF=f2=8000000";
-	private static final String TAG = "DownloaderImpl";
 
 	private final OkHttpClient client;
 	private final ExtractionSessionScope scope;
@@ -102,9 +99,6 @@ public final class DownloaderImpl extends Downloader {
 			}
 		}
 		YoutubeAuth.Result authHeaders = YoutubeAuth.headers(url, auth, System.currentTimeMillis());
-		if (authHeaders.note() != null) {
-			Log.d(TAG, "Skipped YouTube auth headers: " + authHeaders.note());
-		}
 		for (Map.Entry<String, String> entry : authHeaders.headers().entrySet()) {
 			if (hasHeader(headers, entry.getKey())) {
 				continue;
