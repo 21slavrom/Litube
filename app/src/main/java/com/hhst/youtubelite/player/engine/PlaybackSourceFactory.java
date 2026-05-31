@@ -22,7 +22,6 @@ import androidx.media3.extractor.text.SubtitleExtractor;
 
 import com.hhst.youtubelite.extractor.PlaybackDetails;
 import com.hhst.youtubelite.extractor.PlaybackPlan;
-import com.hhst.youtubelite.extractor.StreamCandidate;
 import com.hhst.youtubelite.extractor.VideoDetails;
 
 import org.schabi.newpipe.extractor.services.youtube.dashmanifestcreators.YoutubeProgressiveDashManifestCreator;
@@ -52,12 +51,6 @@ class PlaybackSourceFactory {
 	                          @NonNull PlaybackPlan plan) {
 		VideoDetails video = details.video();
 		long duration = durationSeconds(video);
-		Log.d(TAG, "create mode=" + plan.getMode()
-						+ " streamType=" + plan.getStreamType()
-						+ " manifestUrl=" + plan.getManifestUrl()
-						+ " video=" + describe(plan.getVideoCandidate())
-						+ " audio=" + describe(plan.getAudioCandidate())
-						+ " muxed=" + describe(plan.getMuxedCandidate()));
 		MediaSource base = switch (plan.getMode()) {
 			case LIVE_DASH -> sources.liveYoutubeDashFactory().createMediaSource(buildItem(plan, true));
 			case LIVE_HLS -> sources.liveHlsFactory().createMediaSource(buildItem(plan, true));
@@ -148,21 +141,15 @@ class PlaybackSourceFactory {
 	                                              final long durationSeconds,
 	                                              final boolean live) {
 		if (stream == null) {
-			Log.d(TAG, "createStreamSource stream=null live=" + live);
 			return null;
 		}
 		String url = normalizePlayableUrl(stream.getContent());
 		if (url == null) {
-			Log.w(TAG, "createStreamSource dropped invalid url=" + stream.getContent());
+			Log.w(TAG, "createStreamSource dropped invalid URL");
 			return null;
 		}
 		try {
-			if (stream.getItagItem() != null) {
-				Log.d(TAG, "createStreamSource dash url=" + url
-								+ " itagItem=true"
-								+ " contentLength=" + stream.getItagItem().getContentLength()
-								+ " live=" + live
-								+ " durationMs=" + TimeUnit.SECONDS.toMillis(durationSeconds));
+			if (hasDashIndex(stream)) {
 				String manifest = YoutubeProgressiveDashManifestCreator.fromProgressiveStreamingUrl(
 								url,
 								stream.getItagItem(),
@@ -173,14 +160,19 @@ class PlaybackSourceFactory {
 				return sources.youtubeProgressiveDashFactory(live).createMediaSource(parsed);
 			}
 		} catch (Exception e) {
-			Log.w(TAG, "createStreamSource dash manifest failed url=" + url, e);
+			Log.w(TAG, "createStreamSource dash manifest failed; using progressive source", e);
 		}
-		Log.d(TAG, "createStreamSource progressive url=" + url + " live=" + live);
 		final MediaItem.Builder builder = MediaItem.fromUri(url).buildUpon();
 		if (stream.getFormat() != null) {
 			builder.setMimeType(stream.getFormat().mimeType);
 		}
 		return sources.youtubeProgressiveFactory(live).createMediaSource(builder.build());
+	}
+
+	private static boolean hasDashIndex(@NonNull Stream stream) {
+		return stream.getItagItem() != null
+						&& stream.getItagItem().getIndexStart() >= 0
+						&& stream.getItagItem().getIndexEnd() >= 0;
 	}
 
 	@NonNull
@@ -224,11 +216,4 @@ class PlaybackSourceFactory {
 		}
 	}
 
-	@NonNull
-	private static String describe(@Nullable StreamCandidate candidate) {
-		if (candidate == null) {
-			return "null";
-		}
-		return candidate.getKind() + ":" + candidate.getProtocol() + ":" + candidate.getUrl();
-	}
 }

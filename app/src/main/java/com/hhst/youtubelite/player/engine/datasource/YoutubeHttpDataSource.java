@@ -103,14 +103,6 @@ public final class YoutubeHttpDataSource extends BaseDataSource implements HttpD
 		return "gzip".equalsIgnoreCase(contentEncoding);
 	}
 
-	@NonNull
-	private static String summarize(@NonNull byte[] data) {
-		if (data.length == 0) return "<empty>";
-		int size = Math.min(data.length, 160);
-		String text = new String(data, 0, size);
-		return data.length > size ? text + "..." : text;
-	}
-
 	@Override
 	@Nullable
 	public Uri getUri() {
@@ -153,12 +145,6 @@ public final class YoutubeHttpDataSource extends BaseDataSource implements HttpD
 		bytesRead = 0;
 		bytesToRead = 0;
 		transferInitializing(dataSpecParameter);
-		Log.d(TAG, "open uri=" + dataSpecParameter.uri
-						+ " method=" + dataSpecParameter.httpMethod
-						+ " position=" + dataSpecParameter.position
-						+ " length=" + dataSpecParameter.length
-						+ " rangeParam=" + rangeParameterEnabled
-						+ " rnParam=" + rnParameterEnabled);
 
 		HttpURLConnection httpURLConnection;
 		String responseMessage;
@@ -169,13 +155,8 @@ public final class YoutubeHttpDataSource extends BaseDataSource implements HttpD
 			responseMessage = httpURLConnection.getResponseMessage();
 		} catch (IOException e) {
 			closeConnectionQuietly();
-			Log.e(TAG, "open failed uri=" + dataSpecParameter.uri, e);
 			throw HttpDataSourceException.createForIOException(e, dataSpec, HttpDataSourceException.TYPE_OPEN);
 		}
-
-		Log.d(TAG, "response code=" + responseCode
-						+ " message=" + responseMessage
-						+ " url=" + httpURLConnection.getURL());
 
 		if (responseCode < 200 || responseCode > 299) {
 			final Map<String, List<String>> headers = httpURLConnection.getHeaderFields();
@@ -190,10 +171,6 @@ public final class YoutubeHttpDataSource extends BaseDataSource implements HttpD
 
 			InputStream errorStream = httpURLConnection.getErrorStream();
 			byte[] errorResponseBody = errorStream != null ? StreamIOUtils.readInputStreamToBytes(errorStream) : Util.EMPTY_BYTE_ARRAY;
-			Log.w(TAG, "non-2xx response code=" + responseCode
-							+ " url=" + httpURLConnection.getURL()
-							+ " location=" + httpURLConnection.getHeaderField(HttpHeaders.LOCATION)
-							+ " errorBody=" + summarize(errorResponseBody));
 
 			closeConnectionQuietly();
 			IOException cause = responseCode == 416 ? new DataSourceException(PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE) : null;
@@ -323,11 +300,6 @@ public final class YoutubeHttpDataSource extends BaseDataSource implements HttpD
 		if (rangeParameterEnabled && isVideoPlaybackUrl && (position != 0 || length != C.LENGTH_UNSET)) {
 			requestUrl += "&range=" + position + (length != C.LENGTH_UNSET ? "-" + (position + length - 1) : "-");
 		}
-		Log.d(TAG, "connect url=" + requestUrl
-						+ " followRedirects=" + followRedirects
-						+ " isVideoPlayback=" + isVideoPlaybackUrl
-						+ " headers=" + requestParameters.size());
-
 		HttpURLConnection conn = (HttpURLConnection) new URL(requestUrl).openConnection();
 		conn.setConnectTimeout(connectTimeoutMillis);
 		conn.setReadTimeout(readTimeoutMillis);

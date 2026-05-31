@@ -1,7 +1,5 @@
 package com.hhst.youtubelite.player.engine;
 
-import android.util.Log;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.media3.common.util.UnstableApi;
@@ -28,7 +26,6 @@ import org.schabi.newpipe.extractor.services.youtube.dashmanifestcreators.Youtub
  */
 @UnstableApi
 final class PlayerDataSource {
-	private static final String TAG = "YTLPlayback";
 	private static final int MANIFEST_CACHE_SIZE = 500;
 	private static final int PROGRESSIVE_LOAD_INTERVAL_BYTES = 128 * 1024;
 
@@ -52,10 +49,6 @@ final class PlayerDataSource {
 		ytHlsHttp = youtubeFactory(false, false);
 		ytDashHttp = youtubeFactory(true, true);
 		ytProgressiveHttp = youtubeFactory(false, true);
-		Log.d(TAG, "init cache=" + (cache != null)
-						+ " ytHls(range=false,rn=false)"
-						+ " ytDash(range=true,rn=true)"
-						+ " ytProgressive(range=false,rn=true)");
 		YoutubeProgressiveDashManifestCreator.getCache().setMaximumSize(MANIFEST_CACHE_SIZE);
 		YoutubeOtfDashManifestCreator.getCache().setMaximumSize(MANIFEST_CACHE_SIZE);
 		YoutubePostLiveStreamDvrDashManifestCreator.getCache().setMaximumSize(MANIFEST_CACHE_SIZE);
@@ -90,7 +83,7 @@ final class PlayerDataSource {
 
 	@NonNull
 	DashMediaSource.Factory youtubeProgressiveDashFactory(boolean live) {
-		DataSource.Factory source = live ? ytProgressiveHttp : maybeCache(ytProgressiveHttp);
+		DataSource.Factory source = live ? ytDashHttp : maybeCache(ytDashHttp);
 		return new DashMediaSource.Factory(source);
 	}
 

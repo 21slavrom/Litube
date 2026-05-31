@@ -3,12 +3,14 @@ package com.hhst.youtubelite.player.engine;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
+import androidx.media3.common.PlaybackException;
 import androidx.media3.common.PlaybackParameters;
 import androidx.media3.common.Player;
 import androidx.media3.common.TrackGroup;
@@ -17,6 +19,7 @@ import androidx.media3.common.Tracks;
 import androidx.media3.common.VideoSize;
 import androidx.media3.common.text.CueGroup;
 import androidx.media3.common.util.UnstableApi;
+import androidx.media3.datasource.HttpDataSource;
 import androidx.media3.datasource.cache.SimpleCache;
 import androidx.media3.exoplayer.DecoderCounters;
 import androidx.media3.exoplayer.ExoPlayer;
@@ -54,8 +57,10 @@ import org.schabi.newpipe.extractor.stream.VideoStream;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
@@ -69,6 +74,7 @@ import dagger.hilt.android.scopes.ActivityScoped;
 @UnstableApi
 @ActivityScoped
 public class Engine {
+	private static final String TAG = "YTLPlayback";
 	static final String NO_PLAYABLE_SOURCE_MESSAGE = "No supported playable stream URL in StreamCatalog";
 	private static final int SAFE_ZONE_MS = 5000;
 	@NonNull
@@ -125,6 +131,8 @@ public class Engine {
 	private PlaybackPlan playbackPlan;
 	@Nullable
 	private VideoStream videoStream;
+	@NonNull
+	private final Set<String> failedAdaptiveCandidates = new HashSet<>();
 
 	@Inject
 	public Engine(@NonNull @ApplicationContext Context context,
@@ -217,6 +225,12 @@ public class Engine {
 		Long duration = details.getDuration();
 		if (duration == null || duration <= 0L) return 0L;
 		return TimeUnit.SECONDS.toMillis(duration);
+	}
+
+	@NonNull
+	private static String candidateKey(@Nullable StreamCandidate candidate) {
+		if (candidate == null) return null;
+		return candidate.getKind() + "|" + candidate.getSourceClient() + "|" + candidate.getUrl();
 	}
 
 	@NonNull
@@ -315,6 +329,9 @@ public class Engine {
 		VideoDetails video = details.video();
 		PlaybackPlan plan = details.plan();
 		List<SubtitlesStream> subtitles = details.subtitles();
+		if (!Objects.equals(this.videoId, video.getId())) {
+			failedAdaptiveCandidates.clear();
+		}
 		this.videoId = video.getId();
 		this.videoDetails = video;
 		this.streamCatalog = details.catalog();
@@ -350,6 +367,73 @@ public class Engine {
 
 	public void play() {
 		this.player.play();
+	}
+
+	public boolean recoverFromPlaybackError(@NonNull PlaybackException error) {
+		if (!isHttp403(error)) {
+			return false;
+		}
+		State state = state();
+		if (state == null || state.plan().getMode() != PlaybackMode.ADAPTIVE) {
+			return false;
+		}
+		Log.w(TAG, "adaptive HTTP 403; trying fallback videoId=" + state.video().getId());
+		rememberFailedAdaptiveCandidates(state.plan());
+		PlaybackPlan adaptiveFallback = PlaybackPlanner.adaptiveFallbackPlan(
+						state.deliveries(),
+						prefs.getQuality(),
+						null,
+						this::isFailedAdaptiveCandidate);
+		if (adaptiveFallback != null) {
+			return recoverWithPlan(state, adaptiveFallback, false);
+		}
+		PlaybackPlan muxedFallback = PlaybackPlanner.muxedFallbackPlan(
+						state.deliveries(),
+						prefs.getQuality());
+		if (muxedFallback == null) {
+			return false;
+		}
+		return recoverWithPlan(state, muxedFallback, true);
+	}
+
+	private boolean recoverWithPlan(@NonNull State state,
+	                                @NonNull PlaybackPlan fallback,
+	                                boolean rememberVideoFallback) {
+		long position = Math.max(0L, player.getCurrentPosition());
+		PlaybackParameters speed = player.getPlaybackParameters();
+		boolean playWhenReady = player.getPlayWhenReady();
+		try {
+			playbackPlan = fallback;
+			videoStream = selectedVideo(fallback);
+			player.setMediaSource(PlaybackSourceFactory.create(sources,
+							new PlaybackDetails(state.video(), state.catalog(), state.deliveries(),
+											fallback, segments, subtitles),
+							fallback));
+			player.seekTo(position);
+			player.setPlaybackParameters(speed);
+			player.prepare();
+			player.setPlayWhenReady(playWhenReady);
+			if (rememberVideoFallback) {
+				prefs.markAdaptiveMuxedFallback(state.video().getId());
+			}
+			Log.w(TAG, "recovered from adaptive HTTP 403 with " + fallback.getMode()
+							+ " videoId=" + state.video().getId());
+			return true;
+		} catch (RuntimeException e) {
+			Log.w(TAG, fallback.getMode() + " fallback failed", e);
+			return false;
+		}
+	}
+
+	private void rememberFailedAdaptiveCandidates(@NonNull PlaybackPlan plan) {
+		String video = candidateKey(plan.getVideoCandidate());
+		String audio = candidateKey(plan.getAudioCandidate());
+		if (video != null) failedAdaptiveCandidates.add(video);
+		if (audio != null) failedAdaptiveCandidates.add(audio);
+	}
+
+	private boolean isFailedAdaptiveCandidate(@NonNull StreamCandidate candidate) {
+		return failedAdaptiveCandidates.contains(candidateKey(candidate));
 	}
 
 	public void pause() {
@@ -856,6 +940,28 @@ public class Engine {
 	private boolean isLiveMode(@Nullable PlaybackPlan plan) {
 		return plan != null && (plan.getMode() == PlaybackMode.LIVE_DASH
 						|| plan.getMode() == PlaybackMode.LIVE_HLS);
+	}
+
+	private static boolean isHttp403(@NonNull Throwable throwable) {
+		List<Throwable> pending = new ArrayList<>();
+		List<Throwable> visited = new ArrayList<>();
+		pending.add(throwable);
+		for (int i = 0; i < pending.size(); i++) {
+			Throwable current = pending.get(i);
+			if (current == null || visited.contains(current)) {
+				continue;
+			}
+			visited.add(current);
+			if (current instanceof HttpDataSource.InvalidResponseCodeException http
+							&& http.responseCode == 403) {
+				return true;
+			}
+			if (current.getCause() != null) {
+				pending.add(current.getCause());
+			}
+			Collections.addAll(pending, current.getSuppressed());
+		}
+		return false;
 	}
 
 	public void clear() {

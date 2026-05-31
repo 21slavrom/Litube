@@ -19,6 +19,8 @@ import org.schabi.newpipe.extractor.services.youtube.InnertubeClientRequestInfo;
 import org.schabi.newpipe.extractor.services.youtube.PoTokenResult;
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -35,7 +37,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 /**
- * Loads and mints Web client PoTokens.
+ * Loads and mints YouTube client PoTokens.
  */
 @Singleton
 public final class PoTokenCoordinator {
@@ -106,22 +108,7 @@ public final class PoTokenCoordinator {
 				return null;
 			}
 
-			String playerPoToken = mintPoToken(hostGeneration, videoId);
-			if (playerPoToken == null) {
-				active = initializeSession(hostGeneration);
-				session = active;
-				if (active == null) {
-					return null;
-				}
-				playerPoToken = mintPoToken(hostGeneration, videoId);
-			}
-			if (playerPoToken == null) {
-				return null;
-			}
-			return new PoTokenResult(
-							visitorData,
-							playerPoToken,
-							playerPoToken);
+			return mintClientPoToken(hostGeneration, videoId, visitorData);
 		}
 	}
 
@@ -132,7 +119,47 @@ public final class PoTokenCoordinator {
 
 	@Nullable
 	public PoTokenResult getIosClientPoToken(@NonNull String videoId) {
-		return load("ios", videoId);
+		String player = read("ios", videoId, "player");
+		String gvs = read("ios", videoId, "gvs");
+		if (player == null || gvs == null) {
+			return null;
+		}
+		String visitor = read("ios", videoId, "visitor");
+		return new PoTokenResult(
+						visitor != null ? visitor : fetchIosVisitorData(),
+						player,
+						gvs);
+	}
+
+	@Nullable
+	private PoTokenResult mintClientPoToken(long hostGeneration,
+	                                        @NonNull String videoId,
+	                                        @NonNull String visitorData) {
+		String playerPoToken = mintPoToken(hostGeneration, videoId);
+		String streamingPoToken = playerPoToken != null
+						? mintPoToken(hostGeneration, visitorData)
+						: null;
+		if (playerPoToken == null || streamingPoToken == null) {
+			PoTokenSession active = initializeSession(hostGeneration);
+			session = active;
+			if (active == null) {
+				return null;
+			}
+			playerPoToken = mintPoToken(hostGeneration, videoId);
+			streamingPoToken = playerPoToken != null
+							? mintPoToken(hostGeneration, visitorData)
+							: null;
+		}
+		if (playerPoToken == null) {
+			return null;
+		}
+		if (streamingPoToken == null) {
+			streamingPoToken = playerPoToken;
+		}
+		return new PoTokenResult(
+						visitorData,
+						playerPoToken,
+						streamingPoToken);
 	}
 
 	@Nullable
@@ -251,6 +278,29 @@ public final class PoTokenCoordinator {
 		} catch (Exception ignored) {
 			return null;
 		}
+	}
+
+	@Nullable
+	private String fetchIosVisitorData() {
+		try {
+			return YoutubeParsingHelper.getVisitorDataFromInnertube(
+							InnertubeClientRequestInfo.ofIosClient(),
+							Localization.DEFAULT,
+							ContentCountry.DEFAULT,
+							getMobileClientHeaders(YoutubeParsingHelper.getIosUserAgent(Localization.DEFAULT)),
+							YoutubeParsingHelper.YOUTUBEI_V1_URL,
+							null,
+							false);
+		} catch (Exception ignored) {
+			return null;
+		}
+	}
+
+	@NonNull
+	private static Map<String, List<String>> getMobileClientHeaders(@NonNull String userAgent) {
+		return Map.of(
+						"User-Agent", List.of(userAgent),
+						"X-Goog-Api-Format-Version", List.of("2"));
 	}
 
 	@Nullable

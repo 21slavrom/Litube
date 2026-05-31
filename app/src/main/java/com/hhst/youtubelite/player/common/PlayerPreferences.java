@@ -39,10 +39,12 @@ public final class PlayerPreferences {
 	private static final String KEY_MINI_PLAYER_TRANSLATION_X_DP = "mini_player_translation_x_dp";
 	private static final String KEY_MINI_PLAYER_TRANSLATION_Y_DP = "mini_player_translation_y_dp";
 	private static final String PREFIX_PROGRESS = "progress:";
+	private static final String PREFIX_ADAPTIVE_MUXED_FALLBACK = "adaptive_muxed_fallback:";
 
 	private static final float DEFAULT_SPEED = 1.0f;
 	private static final String DEFAULT_QUALITY = "480p";
 	private static final long EXPIRATION_DAYS_3 = 3L * 24 * 60 * 60 * 1000;
+	private static final long ADAPTIVE_MUXED_FALLBACK_EXPIRATION_MS = 30L * 60 * 1000;
 	private static final int DEFAULT_MINI_PLAYER_WIDTH_DP = -1;
 	private static final float DEFAULT_MINI_PLAYER_TRANSLATION_DP = 0.0f;
 
@@ -162,6 +164,24 @@ public final class PlayerPreferences {
 		String key = PREFIX_PROGRESS + videoId;
 		String json = gson.toJson(new Progress(position, unit.toMillis(duration), System.currentTimeMillis()));
 		mmkv.encode(key, json);
+	}
+
+	public boolean shouldUseAdaptiveMuxedFallback(@Nullable String videoId) {
+		if (videoId == null || videoId.isBlank()) return false;
+		String key = PREFIX_ADAPTIVE_MUXED_FALLBACK + videoId;
+		long timestamp = mmkv.decodeLong(key, 0L);
+		if (timestamp <= 0L) return false;
+		if (System.currentTimeMillis() - timestamp > ADAPTIVE_MUXED_FALLBACK_EXPIRATION_MS) {
+			mmkv.removeValueForKey(key);
+			return false;
+		}
+		return true;
+	}
+
+	public void markAdaptiveMuxedFallback(@Nullable String videoId) {
+		if (videoId == null || videoId.isBlank()) return;
+		// Only quarantine the failing video briefly; most videos still work with adaptive streams.
+		mmkv.encode(PREFIX_ADAPTIVE_MUXED_FALLBACK + videoId, System.currentTimeMillis());
 	}
 
 	@NonNull

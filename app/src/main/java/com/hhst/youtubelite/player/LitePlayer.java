@@ -14,7 +14,9 @@ import androidx.media3.ui.DefaultTimeBar;
 import com.hhst.youtubelite.PlaybackService;
 import com.hhst.youtubelite.R;
 import com.hhst.youtubelite.extractor.ExtractionSession;
+import com.hhst.youtubelite.extractor.PlaybackMode;
 import com.hhst.youtubelite.extractor.PlaybackDetails;
+import com.hhst.youtubelite.extractor.PlaybackPlan;
 import com.hhst.youtubelite.extractor.PlaybackPlanner;
 import com.hhst.youtubelite.extractor.YoutubeExtractor;
 import com.hhst.youtubelite.extractor.exception.ExtractionException;
@@ -166,6 +168,9 @@ public class LitePlayer {
 
 			@Override
 			public void onPlayerError(@NonNull PlaybackException error) {
+				if (engine.recoverFromPlaybackError(error)) {
+					return;
+				}
 				ErrorDialog.show(activity, error.getMessage(), error);
 			}
 		});
@@ -241,11 +246,18 @@ public class LitePlayer {
 						}, executor).thenCompose(ignored -> extractor.getInfo(url, session))
 						.thenApply(details -> {
 							String lang = kv.decodeString(KEY_LAST_AUDIO_LANG, "und");
+							PlaybackPlan plan = PlaybackPlanner.plan(details.deliveries(), prefs.getQuality(), lang);
+							if (prefs.shouldUseAdaptiveMuxedFallback(videoId) && plan.getMode() == PlaybackMode.ADAPTIVE) {
+								PlaybackPlan fallback = PlaybackPlanner.muxedFallbackPlan(details.deliveries(), prefs.getQuality());
+								if (fallback != null) {
+									plan = fallback;
+								}
+							}
 							return new PlaybackDetails(
 											details.video(),
 											details.catalog(),
 											details.deliveries(),
-											PlaybackPlanner.plan(details.deliveries(), prefs.getQuality(), lang),
+											plan,
 											details.segments(),
 											details.subtitles());
 						}).thenAccept(er -> activity.runOnUiThread(() -> {
