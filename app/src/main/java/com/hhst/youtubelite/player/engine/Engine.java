@@ -684,16 +684,7 @@ public class Engine {
 				}
 			}
 		}
-		resolutions.sort((a, b) -> {
-			try {
-				int h1 = Integer.parseInt(a.replace("p", ""));
-				int h2 = Integer.parseInt(b.replace("p", ""));
-				return Integer.compare(h2, h1);
-			} catch (NumberFormatException e) {
-				return a.compareTo(b);
-			}
-		});
-		return resolutions;
+		return PlayerUtils.sortResolutionLabels(resolutions);
 	}
 
 	public void onQualitySelected(@Nullable String res) {

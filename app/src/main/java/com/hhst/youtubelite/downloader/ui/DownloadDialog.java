@@ -41,6 +41,7 @@ import com.hhst.youtubelite.gallery.GalleryActivity;
 import com.hhst.youtubelite.util.DownloadStorageUtils;
 import com.hhst.youtubelite.util.ImageUtils;
 import com.hhst.youtubelite.util.PermissionUtils;
+import com.hhst.youtubelite.util.StringUtils;
 import com.hhst.youtubelite.util.ToastUtils;
 import com.tencent.mmkv.MMKV;
 
@@ -53,6 +54,7 @@ import org.schabi.newpipe.extractor.stream.VideoStream;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -362,10 +364,7 @@ public class DownloadDialog {
 			if (videoEnabled) prefs.saveVideoSelection(selectedVideo);
 			btn.setBackgroundColor(videoEnabled ? primaryColor : grayColor);
 			if (videoEnabled) {
-				List<AudioStream> audioStreams = new ArrayList<>();
-				for (AudioStream as : catalog.getAudioStreams()) {
-					if (as.getFormat() == MediaFormat.M4A) audioStreams.add(as);
-				}
+				List<AudioStream> audioStreams = audioChoices();
 				if (audioStreams.size() > 1) {
 					showAudioTrackSelectionForVideo(audioStreams, () -> {
 						btn.setBackgroundColor(primaryColor);
@@ -391,8 +390,9 @@ public class DownloadDialog {
 		LinearLayout container = v.findViewById(R.id.quality_container);
 		v.findViewById(R.id.loadingBar2).setVisibility(View.GONE);
 
-		AlertDialog d = new MaterialAlertDialogBuilder(context).setTitle("Select Audio Track").setView(v).setCancelable(false).create();
+		AlertDialog d = new MaterialAlertDialogBuilder(context).setTitle(R.string.audio_track).setView(v).setCancelable(false).create();
 		CheckBox[] refs = new CheckBox[1];
+		streams = audioTrackChoices(streams);
 		selectedAudio = prefs.restoreAudioSelection(streams);
 		if (selectedAudio == null && !streams.isEmpty())
 			selectedAudio = chooseOriginalAudioStream(streams);
@@ -453,11 +453,7 @@ public class DownloadDialog {
 	private void setupAudioContainer(View dialogView, LinearLayout container, AlertDialog d, Button btn) {
 		if (catalog == null) return;
 		CheckBox[] refs = new CheckBox[1];
-		List<AudioStream> audioStreams = new ArrayList<>();
-		for (AudioStream s : catalog.getAudioStreams()) {
-			if (s.getFormat() != MediaFormat.M4A) continue;
-			audioStreams.add(s);
-		}
+		List<AudioStream> audioStreams = audioChoices();
 		selectedAudio = prefs.restoreAudioSelection(audioStreams);
 		if (selectedAudio == null && !audioStreams.isEmpty())
 			selectedAudio = chooseOriginalAudioStream(audioStreams);
@@ -585,7 +581,58 @@ public class DownloadDialog {
 		for (VideoStream stream : catalog.getVideoStreams()) {
 			if (stream.getFormat() == MediaFormat.MPEG_4) result.add(stream);
 		}
+		return sortVideoChoices(result);
+	}
+
+	@NonNull
+	static List<VideoStream> sortVideoChoices(@NonNull List<VideoStream> streams) {
+		List<VideoStream> result = videoDownloadChoices(streams);
+		result.sort((left, right) -> {
+			int height = Integer.compare(videoHeight(right), videoHeight(left));
+			if (height != 0) return height;
+			int fps = Integer.compare(Math.max(right.getFps(), 0), Math.max(left.getFps(), 0));
+			if (fps != 0) return fps;
+			int bitrate = Integer.compare(Math.max(right.getBitrate(), 0), Math.max(left.getBitrate(), 0));
+			if (bitrate != 0) return bitrate;
+			return Integer.compare(left.getItag(), right.getItag());
+		});
 		return result;
+	}
+
+	@NonNull
+	static List<VideoStream> videoDownloadChoices(@NonNull List<VideoStream> streams) {
+		Map<String, VideoStream> choices = new LinkedHashMap<>();
+		for (VideoStream stream : streams) {
+			if (stream.getFormat() != MediaFormat.MPEG_4) continue;
+			String key = videoDownloadKey(stream);
+			VideoStream existing = choices.get(key);
+			if (existing == null || compareVideoDownloadVariant(stream, existing) > 0) {
+				choices.put(key, stream);
+			}
+		}
+		return new ArrayList<>(choices.values());
+	}
+
+	private static int compareVideoDownloadVariant(@NonNull VideoStream left, @NonNull VideoStream right) {
+		int bitrate = Integer.compare(Math.max(left.getBitrate(), 0), Math.max(right.getBitrate(), 0));
+		if (bitrate != 0) return bitrate;
+		return Long.compare(videoContentLength(left), videoContentLength(right));
+	}
+
+	private static long videoContentLength(@NonNull VideoStream stream) {
+		return stream.getItagItem() == null ? 0 : Math.max(stream.getItagItem().getContentLength(), 0);
+	}
+
+	@NonNull
+	private static String videoDownloadKey(@NonNull VideoStream stream) {
+		return String.valueOf(stream.getResolution()).trim() + "|"
+						+ Math.max(stream.getFps(), 0) + "|"
+						+ stream.getFormat();
+	}
+
+	private static int videoHeight(@NonNull VideoStream stream) {
+		int height = stream.getHeight();
+		return height > 0 ? height : StringUtils.parseHeight(stream.getResolution());
 	}
 
 	@NonNull
@@ -608,12 +655,53 @@ public class DownloadDialog {
 
 	@NonNull
 	private List<AudioStream> audioChoices() {
-		List<AudioStream> result = new ArrayList<>();
-		if (catalog == null) return result;
-		for (AudioStream stream : catalog.getAudioStreams()) {
-			if (stream.getFormat() == MediaFormat.M4A) result.add(stream);
+		if (catalog == null) return List.of();
+		return audioTrackChoices(catalog.getAudioStreams());
+	}
+
+	@NonNull
+	static List<AudioStream> audioTrackChoices(@NonNull List<AudioStream> streams) {
+		Map<String, AudioStream> choices = new LinkedHashMap<>();
+		for (AudioStream stream : streams) {
+			if (stream.getFormat() != MediaFormat.M4A) continue;
+			String key = audioTrackKey(stream);
+			AudioStream existing = choices.get(key);
+			if (existing == null || compareAudioTrackVariant(stream, existing) > 0) {
+				// The picker chooses the audio track, so collapse duplicate M4A variants for the same track.
+				choices.put(key, stream);
+			}
 		}
-		return result;
+		return new ArrayList<>(choices.values());
+	}
+
+	private static int compareAudioTrackVariant(@NonNull AudioStream left, @NonNull AudioStream right) {
+		int bitrate = Integer.compare(Math.max(left.getAverageBitrate(), 0), Math.max(right.getAverageBitrate(), 0));
+		if (bitrate != 0) return bitrate;
+		return Long.compare(audioContentLength(left), audioContentLength(right));
+	}
+
+	private static long audioContentLength(@NonNull AudioStream stream) {
+		return stream.getItagItem() == null ? 0 : Math.max(stream.getItagItem().getContentLength(), 0);
+	}
+
+	@NonNull
+	private static String audioTrackKey(@NonNull AudioStream stream) {
+		String id = stream.getAudioTrackId();
+		if (hasText(id)) return "id:" + id;
+		String name = stream.getAudioTrackName();
+		Locale locale = stream.getAudioLocale();
+		AudioTrackType type = stream.getAudioTrackType();
+		if (!hasText(name) && locale == null && type == null) return "default";
+		return "track:"
+						+ (hasText(name) ? name.trim() : "")
+						+ "|"
+						+ (locale == null ? "" : locale.toLanguageTag())
+						+ "|"
+						+ (type == null ? "" : type.name());
+	}
+
+	private static boolean hasText(@Nullable String value) {
+		return value != null && !value.trim().isEmpty();
 	}
 
 	@NonNull
