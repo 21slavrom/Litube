@@ -1,0 +1,11 @@
+- Fixed video quality falling back to 360p
+- Fixed some 403 and source error playback issues
+- Fixed action button text rendering
+- Fixed WebView clicks after long-press preview popups
+- Fixed the Add to queue option in long-press menus
+- Fixed pause support in Download Activity
+- Fixed downloader video quality and audio track item display
+- Added an Auto quality option when player quality memory is off
+- Fixed fullscreen switching with auto-rotate enabled
+- Fixed the monochrome icon
+- Fixed other small issues
