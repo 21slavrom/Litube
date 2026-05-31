@@ -691,7 +691,7 @@ public class Engine {
 		if (res == null) return;
 		State state = state();
 		if (state == null) return;
-		prefs.setQuality(res);
+		prefs.setPreferredQuality(res);
 		PlaybackPlan plan = PlaybackPlanner.plan(state.deliveries(), res, null);
 		this.playbackPlan = plan;
 		Delivery delivery = plan.getDelivery();
@@ -795,6 +795,7 @@ public class Engine {
 		return best;
 	}
 
+	@Nullable
 	public String getQuality() {
 		VideoStream videoStream = this.videoStream;
 		if (videoStream != null) return videoStream.getResolution();
@@ -803,12 +804,16 @@ public class Engine {
 			int fps = Math.round(format.frameRate);
 			return fps > 30 ? format.height + "p" + fps : format.height + "p";
 		}
-		return prefs.getQuality();
+		return prefs.getPreferredQuality();
 	}
 
 	public String getQualityLabel() {
 		String quality = getQuality();
-		return quality == null || quality.isEmpty() ? prefs.getQuality() : quality;
+		if (quality != null && !quality.isEmpty()) {
+			return quality;
+		}
+		String preferredQuality = prefs.getPreferredQuality();
+		return preferredQuality == null ? "" : preferredQuality;
 	}
 
 	public void setRepeatMode(int mode) {

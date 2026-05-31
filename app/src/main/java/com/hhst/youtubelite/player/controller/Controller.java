@@ -397,7 +397,7 @@ public class Controller {
 							speedView.setText(String.format(Locale.getDefault(), "%sx", engine.getPlaybackRate()));
 						}
 						TextView qualityView = playerView.findViewById(R.id.btn_quality);
-						if (qualityView != null) qualityView.setText(engine.getQualityLabel());
+						if (qualityView != null) qualityView.setText(qualityButtonLabel());
 					});
 				}
 			}
@@ -407,7 +407,7 @@ public class Controller {
 				updateSubtitleButtonState();
 				playerView.post(() -> {
 					TextView qualityView = playerView.findViewById(R.id.btn_quality);
-					if (qualityView != null) qualityView.setText(engine.getQualityLabel());
+					if (qualityView != null) qualityView.setText(qualityButtonLabel());
 				});
 			}
 
@@ -554,23 +554,37 @@ public class Controller {
 		}
 
 		if (qualityView != null) {
-			qualityView.setText(engine.getQualityLabel());
+			qualityView.setText(qualityButtonLabel());
 			qualityView.setOnClickListener(v -> {
 				List<String> available = engine.getAvailableResolutions();
 				if (available.isEmpty()) return;
 				String[] labels = available.toArray(new String[0]);
 				String[] values = available.toArray(new String[0]);
-				int checked = Arrays.asList(values).indexOf(engine.getQuality());
+				int checked = prefs.getPreferredQuality() == null ? -1 : Arrays.asList(values).indexOf(engine.getQuality());
 				showSelectionPopup(v, labels, checked, (index, label) -> {
 					String selected = values[index];
 					engine.onQualitySelected(selected);
-					prefs.setQuality(selected);
 					qualityView.setText(label);
 					String js = String.format("(function(t){const p=document.querySelector('#movie_player');const ls=p.getAvailableQualityLabels();const v=l=>parseInt(l.replace(/\\D/g,''));const target=v(t);const closest=ls.reduce((b,c,i)=>Math.abs(v(c)-target)<Math.abs(v(ls[b])-target)?i:b,0);const quality=p.getAvailableQualityLevels()[closest];p.setPlaybackQualityRange(quality,quality);})('%s')", label);
 					tabManager.evaluateJavascript(js, null);
 				});
 			});
 		}
+	}
+
+	@NonNull
+	private String qualityButtonLabel() {
+		if (prefs.getPreferredQuality() != null) {
+			return engine.getQualityLabel();
+		}
+		if (engine.getPlaybackState() == Player.STATE_IDLE) {
+			return activity.getString(R.string.player_quality_auto);
+		}
+		String quality = engine.getQuality();
+		if (quality == null || quality.isEmpty()) {
+			return activity.getString(R.string.player_quality_auto);
+		}
+		return activity.getString(R.string.player_quality_auto) + " " + quality;
 	}
 
 	private void setupSubtitleAndSegmentButtons() {

@@ -42,7 +42,6 @@ public final class PlayerPreferences {
 	private static final String PREFIX_ADAPTIVE_MUXED_FALLBACK = "adaptive_muxed_fallback:";
 
 	private static final float DEFAULT_SPEED = 1.0f;
-	private static final String DEFAULT_QUALITY = "480p";
 	private static final long EXPIRATION_DAYS_3 = 3L * 24 * 60 * 60 * 1000;
 	private static final long ADAPTIVE_MUXED_FALLBACK_EXPIRATION_MS = 30L * 60 * 1000;
 	private static final int DEFAULT_MINI_PLAYER_WIDTH_DP = -1;
@@ -77,20 +76,15 @@ public final class PlayerPreferences {
 		mmkv.encode(KEY_PLAYBACK_SPEED, speed);
 	}
 
-	@NonNull
-	public String getQuality() {
-		String quality = getPreferredQuality();
-		return quality == null ? DEFAULT_QUALITY : quality;
-	}
-
 	@Nullable
 	public String getPreferredQuality() {
 		boolean enabled = extensionManager.isEnabled(com.hhst.youtubelite.extension.Constant.REMEMBER_QUALITY);
 		if (!enabled) return null;
-		return mmkv.decodeString(KEY_VIDEO_QUALITY, DEFAULT_QUALITY);
+		String quality = mmkv.decodeString(KEY_VIDEO_QUALITY, null);
+		return quality == null || quality.isBlank() ? null : quality;
 	}
 
-	public void setQuality(@NonNull String quality) {
+	public void setPreferredQuality(@NonNull String quality) {
 		boolean enabled = extensionManager.isEnabled(com.hhst.youtubelite.extension.Constant.REMEMBER_QUALITY);
 		if (!enabled) return;
 		mmkv.encode(KEY_VIDEO_QUALITY, quality);
