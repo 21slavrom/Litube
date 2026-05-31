@@ -126,6 +126,24 @@ public class LiteDownloaderImpl implements LiteDownloader {
 	}
 
 	@Override
+	public boolean pause(@NonNull String videoId) {
+		Task task = tasks.get(videoId);
+		if (task == null) return false;
+		if (task.video() != null) streamDL.pause(task.video().getContent());
+		if (task.audio() != null) streamDL.pause(task.audio().getContent());
+		return task.video() != null || task.audio() != null;
+	}
+
+	@Override
+	public boolean resume(@NonNull String videoId) {
+		Task task = tasks.get(videoId);
+		if (task == null) return false;
+		if (task.video() != null) streamDL.resume(task.video().getContent());
+		if (task.audio() != null) streamDL.resume(task.audio().getContent());
+		return task.video() != null || task.audio() != null;
+	}
+
+	@Override
 	public void cancel(@NonNull String videoId) {
 		Task t = tasks.remove(videoId);
 		try {

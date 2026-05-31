@@ -161,8 +161,15 @@
     <string name="status_downloading_simple">下载中</string>
     <string name="type_playlist">播放列表</string>
     <string name="status_paused">已暂停</string>
-    <string name="download_progress_with_total">下载中：%1$s MB / %2$s MB（%3$d%%）</string>
-    <string name="download_progress_simple">下载中：%1$s MB</string>
+    <string name="download_action_open_file">打开文件</string>
+    <string name="download_action_redownload">重新下载</string>
+    <string name="download_action_retry">重试下载</string>
+    <string name="download_action_cancel">取消下载</string>
+    <string name="download_action_copy_video_id">复制视频 ID</string>
+    <string name="download_action_pause">暂停下载</string>
+    <string name="download_action_resume">继续下载</string>
+    <string name="download_progress_with_total">%1$sMB/%2$sMB(%3$d%%)</string>
+    <string name="download_progress_simple">%1$sMB</string>
     <string name="download_playlist_summary">%1$d / %2$d 项目\n(%3$d%%)</string>
     <string name="preparing_download">正在准备下载…</string>
     <string name="downloading_file">正在下载: %1$s</string>

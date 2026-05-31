@@ -76,6 +76,12 @@ public class DownloadService extends Service {
 		};
 	}
 
+	private static boolean isRunningState(@NonNull DownloadStatus status) {
+		return status == DownloadStatus.RUNNING
+						|| status == DownloadStatus.MERGING
+						|| status == DownloadStatus.QUEUED;
+	}
+
 	@Override
 	public void onCreate() {
 		super.onCreate();
@@ -189,6 +195,18 @@ public class DownloadService extends Service {
 		downloader.cancel(taskId);
 	}
 
+	public boolean pause(@NonNull String taskId) {
+		if (!downloader.pause(taskId)) return false;
+		updateRecordProgress(taskId, -1, -1, -1, DownloadStatus.PAUSED);
+		return true;
+	}
+
+	public boolean resume(@NonNull String taskId) {
+		if (!downloader.resume(taskId)) return false;
+		updateRecordProgress(taskId, -1, -1, -1, DownloadStatus.RUNNING);
+		return true;
+	}
+
 	private void settleCanceledRecord(@NonNull String taskId) {
 		DownloadRecord record = historyRepository.findByTaskId(taskId);
 		if (record == null) {
@@ -244,16 +262,11 @@ public class DownloadService extends Service {
 							DownloadTaskIdHelper.extractItemKey(child.getTaskId()),
 							child.getStatus(),
 							(left, right) -> {
-								if (left == DownloadStatus.RUNNING
-												|| left == DownloadStatus.MERGING
-												|| left == DownloadStatus.QUEUED
-												|| left == DownloadStatus.PAUSED
-												|| right == DownloadStatus.RUNNING
-												|| right == DownloadStatus.MERGING
-												|| right == DownloadStatus.QUEUED
-												|| right == DownloadStatus.PAUSED) {
+								if (isRunningState(left) || isRunningState(right)) {
 									return DownloadStatus.RUNNING;
 								}
+								if (left == DownloadStatus.PAUSED || right == DownloadStatus.PAUSED)
+									return DownloadStatus.PAUSED;
 								if (left == DownloadStatus.FAILED || right == DownloadStatus.FAILED)
 									return DownloadStatus.FAILED;
 								if (left == DownloadStatus.CANCELED || right == DownloadStatus.CANCELED)
@@ -270,11 +283,13 @@ public class DownloadService extends Service {
 		int failed = 0;
 		int canceled = 0;
 		int running = 0;
+		int paused = 0;
 		for (DownloadStatus status : itemStates.values()) {
 			switch (status) {
 				case COMPLETED -> done++;
 				case FAILED -> failed++;
 				case CANCELED -> canceled++;
+				case PAUSED -> paused++;
 				default -> running++;
 			}
 		}
@@ -289,6 +304,8 @@ public class DownloadService extends Service {
 		parent.setUpdatedAt(System.currentTimeMillis());
 		if (running > 0 || itemStates.size() < itemCount) {
 			parent.setStatus(DownloadStatus.RUNNING);
+		} else if (paused > 0) {
+			parent.setStatus(DownloadStatus.PAUSED);
 		} else if (done >= itemCount && itemCount > 0) {
 			parent.setStatus(DownloadStatus.COMPLETED);
 		} else if (failed == 0 && canceled > 0 && done + canceled >= itemCount) {

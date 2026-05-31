@@ -160,8 +160,15 @@
     <string name="type_subtitle">Subtitle</string>
     <string name="type_thumbnail">Thumbnail</string>
     <string name="status_paused">Paused</string>
-    <string name="download_progress_with_total">%1$s / %2$s MB (%3$d%%)</string>
-    <string name="download_progress_simple">%1$s MB</string>
+    <string name="download_action_open_file">Open file</string>
+    <string name="download_action_redownload">Download again</string>
+    <string name="download_action_retry">Retry download</string>
+    <string name="download_action_cancel">Cancel download</string>
+    <string name="download_action_copy_video_id">Copy video ID</string>
+    <string name="download_action_pause">Pause download</string>
+    <string name="download_action_resume">Resume download</string>
+    <string name="download_progress_with_total">%1$sMB/%2$sMB(%3$d%%)</string>
+    <string name="download_progress_simple">%1$sMB</string>
     <string name="download_playlist_summary" tools:ignore="PluralsCandidate">%1$d / %2$d items\n(%3$d%%)</string>
     <string name="filename">Filename</string>
     <string name="preparing_download">Preparing download…</string>

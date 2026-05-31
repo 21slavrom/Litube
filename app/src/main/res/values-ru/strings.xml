@@ -142,8 +142,15 @@
     <string name="status_downloading_simple">Загружается</string>
     <string name="type_playlist">Плейлист</string>
     <string name="status_paused">На паузе</string>
-    <string name="download_progress_with_total">%1$s / %2$s МБ (%3$d%%)</string>
-    <string name="download_progress_simple">%1$s МБ</string>
+    <string name="download_action_open_file">Открыть файл</string>
+    <string name="download_action_redownload">Скачать заново</string>
+    <string name="download_action_retry">Повторить загрузку</string>
+    <string name="download_action_cancel">Отменить загрузку</string>
+    <string name="download_action_copy_video_id">Скопировать ID видео</string>
+    <string name="download_action_pause">Приостановить загрузку</string>
+    <string name="download_action_resume">Возобновить загрузку</string>
+    <string name="download_progress_with_total">%1$sMB/%2$sMB(%3$d%%)</string>
+    <string name="download_progress_simple">%1$sMB</string>
     <string name="download_playlist_summary">%1$d / %2$d элементов\n(%3$d%%)</string>
     <string name="preparing_download">Подготовка загрузки…</string>
     <string name="downloading_file">Загрузка: %1$s</string>

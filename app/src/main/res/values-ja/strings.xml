@@ -142,8 +142,15 @@
     <string name="status_downloading_simple">ダウンロード中</string>
     <string name="type_playlist">プレイリスト</string>
     <string name="status_paused">一時停止中</string>
-    <string name="download_progress_with_total">ダウンロード中：%1$s MB / %2$s MB（%3$d%%）</string>
-    <string name="download_progress_simple">ダウンロード中：%1$s MB</string>
+    <string name="download_action_open_file">ファイルを開く</string>
+    <string name="download_action_redownload">再ダウンロード</string>
+    <string name="download_action_retry">ダウンロードを再試行</string>
+    <string name="download_action_cancel">ダウンロードをキャンセル</string>
+    <string name="download_action_copy_video_id">動画 ID をコピー</string>
+    <string name="download_action_pause">ダウンロードを一時停止</string>
+    <string name="download_action_resume">ダウンロードを再開</string>
+    <string name="download_progress_with_total">%1$sMB/%2$sMB(%3$d%%)</string>
+    <string name="download_progress_simple">%1$sMB</string>
     <string name="download_playlist_summary">%1$d / %2$d 件\n(%3$d%%)</string>
     <string name="preparing_download">ダウンロードを準備中…</string>
     <string name="downloading_file">ダウンロード中: %1$s</string>

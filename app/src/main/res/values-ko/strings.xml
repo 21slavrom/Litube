@@ -142,8 +142,15 @@
     <string name="status_downloading_simple">다운로드 중</string>
     <string name="type_playlist">재생목록</string>
     <string name="status_paused">일시정지됨</string>
-    <string name="download_progress_with_total">다운로드 중: %1$s MB / %2$s MB (%3$d%%)</string>
-    <string name="download_progress_simple">다운로드 중: %1$s MB</string>
+    <string name="download_action_open_file">파일 열기</string>
+    <string name="download_action_redownload">다시 다운로드</string>
+    <string name="download_action_retry">다운로드 재시도</string>
+    <string name="download_action_cancel">다운로드 취소</string>
+    <string name="download_action_copy_video_id">동영상 ID 복사</string>
+    <string name="download_action_pause">다운로드 일시정지</string>
+    <string name="download_action_resume">다운로드 재개</string>
+    <string name="download_progress_with_total">%1$sMB/%2$sMB(%3$d%%)</string>
+    <string name="download_progress_simple">%1$sMB</string>
     <string name="download_playlist_summary">%1$d / %2$d개 항목\n(%3$d%%)</string>
     <string name="preparing_download">다운로드 준비 중…</string>
     <string name="downloading_file">다운로드 중: %1$s</string>

@@ -12,5 +12,9 @@ public interface LiteDownloader {
 
 	void download(@NonNull Task task);
 
+	boolean pause(@NonNull String videoId);
+
+	boolean resume(@NonNull String videoId);
+
 	void cancel(@NonNull String videoId);
 }

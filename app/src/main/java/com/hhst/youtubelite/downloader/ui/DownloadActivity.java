@@ -207,10 +207,12 @@ public class DownloadActivity extends AppCompatActivity implements DownloadPermi
 
 		@Override
 		public void onRedownload(DownloadRecord record) {
-			if (record.getType() == DownloadType.PLAYLIST) return;
-			String videoId = getCanonicalVideoId(record);
-			String url = "https://m.youtube.com/watch?v=" + videoId;
-			new DownloadDialog(url, DownloadActivity.this, youtubeExtractor).show();
+			redownloadRecord(record);
+		}
+
+		@Override
+		public void onTogglePause(DownloadRecord record) {
+			toggleRecordPause(record);
 		}
 
 		@Override
@@ -419,6 +421,40 @@ public class DownloadActivity extends AppCompatActivity implements DownloadPermi
 		}
 		downloadService.cancel(record.getTaskId());
 		scheduleRecordRefresh(record.getTaskId());
+	}
+
+	private void toggleRecordPause(@NonNull DownloadRecord record) {
+		if (record.getStatus() == DownloadStatus.FAILED || record.getStatus() == DownloadStatus.CANCELED) {
+			redownloadRecord(record);
+			return;
+		}
+		if (!isBound || downloadService == null) return;
+		boolean resume = record.getStatus() == DownloadStatus.PAUSED;
+		if (record.getType() == DownloadType.PLAYLIST) {
+			for (DownloadRecord child : historyRepository.getChildrenSorted(record.getTaskId())) {
+				if (resume) {
+					downloadService.resume(child.getTaskId());
+				} else {
+					downloadService.pause(child.getTaskId());
+				}
+				scheduleRecordRefresh(child.getTaskId());
+			}
+			scheduleRecordRefresh(record.getTaskId());
+			return;
+		}
+		if (resume) {
+			downloadService.resume(record.getTaskId());
+		} else {
+			downloadService.pause(record.getTaskId());
+		}
+		scheduleRecordRefresh(record.getTaskId());
+	}
+
+	private void redownloadRecord(@NonNull DownloadRecord record) {
+		if (record.getType() == DownloadType.PLAYLIST) return;
+		String videoId = getCanonicalVideoId(record);
+		String url = "https://m.youtube.com/watch?v=" + videoId;
+		new DownloadDialog(url, DownloadActivity.this, youtubeExtractor).show();
 	}
 
 	private void showDeleteDialog(@NonNull DownloadRecord record) {
@@ -654,6 +690,8 @@ public class DownloadActivity extends AppCompatActivity implements DownloadPermi
 
 			void onRedownload(DownloadRecord record);
 
+			void onTogglePause(DownloadRecord record);
+
 			void onCopyVid(DownloadRecord record);
 
 			void onDelete(DownloadRecord record);
@@ -744,8 +782,8 @@ public class DownloadActivity extends AppCompatActivity implements DownloadPermi
 
 				more.setOnClickListener(v -> showPopupMenu(v, record, actions));
 				itemView.setOnClickListener(v -> {
-					if (isPlaylist || isCompleted) actions.onOpen(record);
-					else showPopupMenu(more, record, actions);
+					if (isCompleted) actions.onOpen(record);
+					else actions.onTogglePause(record);
 				});
 			}
 
@@ -816,21 +854,26 @@ public class DownloadActivity extends AppCompatActivity implements DownloadPermi
 
 				if (record.getType() == DownloadType.PLAYLIST) {
 					if (isActive(record)) {
-						menu.add(0, 5, 0, "Cancel Download");
+						menu.add(0, 6, 0, status == DownloadStatus.PAUSED
+										? R.string.download_action_resume
+										: R.string.download_action_pause);
+						menu.add(0, 5, 1, R.string.download_action_cancel);
 					}
-					menu.add(0, 3, 1, "Delete");
+					menu.add(0, 3, 2, R.string.delete_record);
 				} else {
 					if (status == DownloadStatus.COMPLETED) {
-						menu.add(0, 0, 0, "Open File");
-						menu.add(0, 4, 1, "Redownload");
+						menu.add(0, 0, 0, R.string.download_action_open_file);
+						menu.add(0, 4, 1, R.string.download_action_redownload);
 					} else if (status == DownloadStatus.FAILED || status == DownloadStatus.CANCELED) {
-						menu.add(0, 2, 0, "Retry Download");
-						menu.add(0, 4, 1, "Redownload");
+						menu.add(0, 2, 0, R.string.download_action_retry);
 					} else {
-						menu.add(0, 5, 0, "Cancel Download");
+						menu.add(0, 6, 0, status == DownloadStatus.PAUSED
+										? R.string.download_action_resume
+										: R.string.download_action_pause);
+						menu.add(0, 5, 1, R.string.download_action_cancel);
 					}
-					menu.add(0, 1, 2, "Copy Video ID");
-					menu.add(0, 3, 3, "Delete");
+					menu.add(0, 1, 2, R.string.download_action_copy_video_id);
+					menu.add(0, 3, 3, R.string.delete_record);
 				}
 
 				popup.setOnMenuItemClickListener(item -> {
@@ -841,6 +884,7 @@ public class DownloadActivity extends AppCompatActivity implements DownloadPermi
 						case 3 -> actions.onDelete(record);
 						case 4 -> actions.onRedownload(record);
 						case 5 -> actions.onCancel(record);
+						case 6 -> actions.onTogglePause(record);
 					}
 					return true;
 				});
