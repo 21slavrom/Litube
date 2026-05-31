@@ -3,9 +3,6 @@ package com.hhst.youtubelite.cache;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.hhst.youtubelite.Constant;
-
-import java.net.URI;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -16,10 +13,8 @@ import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.Response;
-import okhttp3.ResponseBody;
 
 /**
  * Policy object that decides how WebView responses are cached.
@@ -36,11 +31,11 @@ public final class WebViewCachePolicy {
 
 	@NonNull
 	public CacheRequestInfo classifyRequest(boolean mainFrame, @Nullable String url, @Nullable String path) {
-		return new CacheRequestInfo(shouldForceCacheMainFrame(mainFrame, url), shouldForceCachePath(path));
+		return new CacheRequestInfo(!mainFrame && shouldForceCachePath(path));
 	}
 
 	public boolean shouldAttemptCacheLookup(@NonNull CacheRequestInfo cacheRequestInfo) {
-		return cacheRequestInfo.forceCacheMainFrame() || cacheRequestInfo.forceCacheStaticResource();
+		return cacheRequestInfo.forceCacheStaticResource();
 	}
 
 	public boolean shouldForceCacheSharedResponse(@NonNull Request request) {
@@ -52,11 +47,11 @@ public final class WebViewCachePolicy {
 		if (response.header(ORIGINAL_CACHE_CONTROL_HEADER) != null) {
 			return response;
 		}
+		if (parseCachePolicy(response.header("Cache-Control")).noStore) {
+			return response;
+		}
 		if (cacheRequestInfo != null) {
 			if (cacheRequestInfo.forceCacheStaticResource()) {
-				return rewriteCacheHeaders(response);
-			}
-			if (cacheRequestInfo.forceCacheMainFrame() && isHtmlLikeResponse(request, response)) {
 				return rewriteCacheHeaders(response);
 			}
 		}
@@ -80,20 +75,7 @@ public final class WebViewCachePolicy {
 		int dot = filename.lastIndexOf('.');
 		if (dot < 0 || dot == filename.length() - 1) return false;
 		String extension = filename.substring(dot + 1).toLowerCase(Locale.US);
-		return Set.of("html", "htm", "js", "ico", "css", "png", "jpg", "jpeg", "gif", "bmp", "ttf", "woff", "woff2", "otf", "eot", "svg", "xml", "swf", "txt", "text", "conf", "webp").contains(extension);
-	}
-
-	boolean shouldForceCacheMainFrame(boolean mainFrame, @Nullable String url) {
-		if (!mainFrame || url == null || url.isEmpty()) return false;
-		try {
-			URI uri = URI.create(url);
-			String host = uri.getHost();
-			if (host == null || "accounts.youtube.com".equalsIgnoreCase(host)) return false;
-			String lowerHost = host.toLowerCase(Locale.US);
-			return lowerHost.equals(Constant.YOUTUBE_DOMAIN) || lowerHost.endsWith("." + Constant.YOUTUBE_DOMAIN);
-		} catch (RuntimeException ignored) {
-			return false;
-		}
+		return Set.of("js", "ico", "css", "png", "jpg", "jpeg", "gif", "bmp", "ttf", "woff", "woff2", "otf", "eot", "svg", "webp").contains(extension);
 	}
 
 	@NonNull
@@ -104,21 +86,6 @@ public final class WebViewCachePolicy {
 			builder.header(ORIGINAL_CACHE_CONTROL_HEADER, originalCacheControl);
 		}
 		return builder.build();
-	}
-
-	private boolean isHtmlLikeResponse(@NonNull Request request, @NonNull Response response) {
-		ResponseBody body = response.body();
-		MediaType contentType = body.contentType();
-		if (contentType != null) {
-			String type = contentType.type();
-			String subtype = contentType.subtype();
-			if ("text".equalsIgnoreCase(type) && "html".equalsIgnoreCase(subtype)) return true;
-			if ("application".equalsIgnoreCase(type) && "xhtml+xml".equalsIgnoreCase(subtype)) {
-				return true;
-			}
-		}
-		String accept = request.header("Accept");
-		return accept != null && accept.toLowerCase(Locale.US).contains("text/html");
 	}
 
 	@Nullable
@@ -221,6 +188,6 @@ public final class WebViewCachePolicy {
 	private record FreshnessInfo(long lifetimeMillis, long remainingMillis) {
 	}
 
-	public record CacheRequestInfo(boolean forceCacheMainFrame, boolean forceCacheStaticResource) {
+	public record CacheRequestInfo(boolean forceCacheStaticResource) {
 	}
 }

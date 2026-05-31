@@ -36,15 +36,25 @@ public class WebViewCachePolicyTest {
 	}
 
 	@Test
-	public void classifyRequest_marksYoutubeMainFrameForForcedCacheLookup() {
+	public void classifyRequest_doesNotForceCacheYoutubeMainFrame() {
 		final WebViewCachePolicy.CacheRequestInfo requestInfo = policy.classifyRequest(
 						true,
 						"https://m.youtube.com/watch?v=abc123",
 						"/watch");
 
-		assertTrue(requestInfo.forceCacheMainFrame());
 		assertFalse(requestInfo.forceCacheStaticResource());
-		assertTrue(policy.shouldAttemptCacheLookup(requestInfo));
+		assertFalse(policy.shouldAttemptCacheLookup(requestInfo));
+	}
+
+	@Test
+	public void classifyRequest_doesNotForceCacheHtmlPath() {
+		final WebViewCachePolicy.CacheRequestInfo requestInfo = policy.classifyRequest(
+						false,
+						"https://m.youtube.com/index.html",
+						"/index.html");
+
+		assertFalse(requestInfo.forceCacheStaticResource());
+		assertFalse(policy.shouldAttemptCacheLookup(requestInfo));
 	}
 
 	@Test
@@ -67,7 +77,7 @@ public class WebViewCachePolicyTest {
 	}
 
 	@Test
-	public void maybeRewriteResponse_forcesYoutubeMainFrameHtmlCaching() {
+	public void maybeRewriteResponse_leavesYoutubeMainFrameHtmlUntouched() {
 		final Request request = new Request.Builder()
 						.url("https://m.youtube.com/watch?v=abc123")
 						.header("Accept", "text/html,application/xhtml+xml")
@@ -83,10 +93,25 @@ public class WebViewCachePolicyTest {
 						request,
 						response);
 
-		assertEquals(
-						"public, max-age=" + WebViewCachePolicy.WEBVIEW_CACHE_MAX_AGE_SECONDS + ", immutable",
-						rewritten.header("Cache-Control"));
-		assertEquals("no-cache", rewritten.header(WebViewCachePolicy.ORIGINAL_CACHE_CONTROL_HEADER));
+		assertEquals("no-cache", rewritten.header("Cache-Control"));
+		assertNull(rewritten.header(WebViewCachePolicy.ORIGINAL_CACHE_CONTROL_HEADER));
+	}
+
+	@Test
+	public void maybeRewriteResponse_leavesNoStoreStaticResourceUntouched() {
+		final Request request = new Request.Builder()
+						.url("https://i.ytimg.com/vi/abc/default.jpg")
+						.build();
+		final Response response = createResponse(
+						request,
+						"no-store",
+						"image/jpeg",
+						System.currentTimeMillis());
+
+		final Response rewritten = policy.maybeRewriteResponse(null, request, response);
+
+		assertEquals("no-store", rewritten.header("Cache-Control"));
+		assertNull(rewritten.header(WebViewCachePolicy.ORIGINAL_CACHE_CONTROL_HEADER));
 	}
 
 	@Test
