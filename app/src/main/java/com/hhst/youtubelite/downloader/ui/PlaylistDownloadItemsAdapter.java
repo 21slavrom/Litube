@@ -18,9 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Component that handles app logic.
- */
 public final class PlaylistDownloadItemsAdapter extends RecyclerView.Adapter<PlaylistDownloadItemsAdapter.VH> {
 	@NonNull
 	private final List<PlaylistDownloadItem> items = new ArrayList<>();
@@ -74,9 +71,6 @@ public final class PlaylistDownloadItemsAdapter extends RecyclerView.Adapter<Pla
 		return items.size();
 	}
 
-/**
- * Contract for app logic.
- */
 	public interface Callbacks {
 		void onItemToggled(int index, boolean selected);
 	}

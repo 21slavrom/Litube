@@ -7,6 +7,7 @@ import android.content.ServiceConnection;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -68,6 +69,7 @@ import java.util.concurrent.Executors;
  */
 @UnstableApi
 public class DownloadDialog {
+	private static final String TAG = "DownloadDialog";
 	private final Context context;
 	private final ExecutorService executor;
 	private final CountDownLatch videoLatch;
@@ -177,7 +179,9 @@ public class DownloadDialog {
 					restoreStreamSelections();
 					updateSelectionColors(videoButton, audioButton, thumbnailButton, subtitleButton);
 				});
-			} catch (InterruptedException ignored) {
+			} catch (InterruptedException e) {
+				Log.d(TAG, "show: stream latch await interrupted", e);
+				Thread.currentThread().interrupt();
 			}
 		});
 
@@ -201,7 +205,9 @@ public class DownloadDialog {
 						}));
 					}
 				});
-			} catch (InterruptedException ignored) {
+			} catch (InterruptedException e) {
+				Log.d(TAG, "show: video latch await interrupted", e);
+				Thread.currentThread().interrupt();
 			}
 		});
 
@@ -309,7 +315,8 @@ public class DownloadDialog {
 		if (!bindingRequested) return;
 		try {
 			context.unbindService(connection);
-		} catch (IllegalArgumentException ignored) {
+		} catch (IllegalArgumentException e) {
+			Log.d(TAG, "safelyUnbindService: service not registered", e);
 		}
 		bindingRequested = false;
 	}
@@ -328,7 +335,9 @@ public class DownloadDialog {
 					loading.setVisibility(View.GONE);
 					setupVideoContainer(v, container, d, btn);
 				});
-			} catch (InterruptedException ignored) {
+			} catch (InterruptedException e) {
+				Log.d(TAG, "showVideoQualityDialog: stream latch await interrupted", e);
+				Thread.currentThread().interrupt();
 			}
 		});
 		d.show();
@@ -444,7 +453,9 @@ public class DownloadDialog {
 					loading.setVisibility(View.GONE);
 					setupAudioContainer(v, container, d, btn);
 				});
-			} catch (InterruptedException ignored) {
+			} catch (InterruptedException e) {
+				Log.d(TAG, "showAudioSelectionDialog: stream latch await interrupted", e);
+				Thread.currentThread().interrupt();
 			}
 		});
 		d.show();
@@ -518,7 +529,9 @@ public class DownloadDialog {
 						}
 					}
 				});
-			} catch (InterruptedException ignored) {
+			} catch (InterruptedException e) {
+				Log.d(TAG, "showSubtitleSelectionDialog: stream latch await interrupted", e);
+				Thread.currentThread().interrupt();
 			}
 		});
 		v.findViewById(R.id.button_confirm).setOnClickListener(v1 -> {

@@ -102,7 +102,7 @@ public final class MiniPlayerLayout {
 	}
 
 /**
- * Value object for app logic.
+ * Computed mini-player width, height, and margin values for a given screen.
  */
 	public record Spec(int widthDp, int heightDp, int rightMarginDp, int bottomMarginDp) {
 	}

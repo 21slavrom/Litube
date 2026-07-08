@@ -1,7 +1,7 @@
 package com.hhst.youtubelite.downloader.core.history;
 
 /**
- * Enumeration of downloadable media types.
+ * Persisted category of a download record.
  */
 public enum DownloadType {
 	PLAYLIST,
@@ -10,4 +10,3 @@ public enum DownloadType {
 	SUBTITLE,
 	THUMBNAIL
 }
-

@@ -72,10 +72,8 @@ public class GalleryActivity extends AppCompatActivity {
 
 		viewPager = findViewById(R.id.viewPager);
 
-		// Close the viewer when the user taps the image or the close button.
 		findViewById(R.id.btnClose).setOnClickListener(view -> finish());
 
-		// Read the thumbnail list from the intent.
 		List<String> urlList = getIntent().getStringArrayListExtra("thumbnails");
 		String baseName = getIntent().getStringExtra("filename");
 
@@ -116,7 +114,7 @@ public class GalleryActivity extends AppCompatActivity {
 			case 1: // Share
 				Context appContext = getApplicationContext();
 				String authority = getPackageName() + ".provider";
-				String chooserTitle = getString(R.string.share_thumbnail);
+				String chooserTitle = getString(R.string.share);
 				String errorMessage = getString(R.string.failed_to_download_thumbnail);
 				File file = new File(getCacheDir(), filename + ".jpg");
 				List<File> cachedFiles = files;
@@ -183,9 +181,6 @@ public class GalleryActivity extends AppCompatActivity {
 		super.onDestroy();
 	}
 
-/**
- * Component that handles app logic.
- */
 	private class ImagePagerAdapter extends FragmentStateAdapter {
 		public ImagePagerAdapter(FragmentManager fragmentManager, Lifecycle lifecycle) {
 			super(fragmentManager, lifecycle);

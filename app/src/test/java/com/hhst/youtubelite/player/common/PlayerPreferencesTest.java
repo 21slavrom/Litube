@@ -18,7 +18,7 @@ public class PlayerPreferencesTest {
 		TestPrefs testPrefs = createPrefs();
 		ExtensionManager extensions = testPrefs.extensions;
 		PlayerPreferences prefs = testPrefs.prefs;
-		when(extensions.isEnabled(com.hhst.youtubelite.extension.Constant.REMEMBER_QUALITY)).thenReturn(false);
+		when(extensions.isEnabled(com.hhst.youtubelite.extension.PreferenceKeys.REMEMBER_QUALITY)).thenReturn(false);
 
 		assertNull(prefs.getPreferredQuality());
 	}
@@ -29,7 +29,7 @@ public class PlayerPreferencesTest {
 		ExtensionManager extensions = testPrefs.extensions;
 		MMKV mmkv = testPrefs.mmkv;
 		PlayerPreferences prefs = testPrefs.prefs;
-		when(extensions.isEnabled(com.hhst.youtubelite.extension.Constant.REMEMBER_QUALITY)).thenReturn(true);
+		when(extensions.isEnabled(com.hhst.youtubelite.extension.PreferenceKeys.REMEMBER_QUALITY)).thenReturn(true);
 		when(mmkv.decodeString("video_quality", null)).thenReturn("1080p");
 
 		assertEquals("1080p", prefs.getPreferredQuality());
@@ -41,7 +41,7 @@ public class PlayerPreferencesTest {
 		ExtensionManager extensions = testPrefs.extensions;
 		MMKV mmkv = testPrefs.mmkv;
 		PlayerPreferences prefs = testPrefs.prefs;
-		when(extensions.isEnabled(com.hhst.youtubelite.extension.Constant.REMEMBER_QUALITY)).thenReturn(true);
+		when(extensions.isEnabled(com.hhst.youtubelite.extension.PreferenceKeys.REMEMBER_QUALITY)).thenReturn(true);
 		when(mmkv.decodeString("video_quality", null)).thenReturn(" ");
 
 		assertNull(prefs.getPreferredQuality());

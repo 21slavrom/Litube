@@ -1,5 +1,7 @@
 package com.hhst.youtubelite.downloader.core.history;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -21,6 +23,7 @@ import javax.inject.Singleton;
  */
 @Singleton
 public final class DownloadHistoryRepository {
+	private static final String TAG = "DownloadHistoryRepo";
 	public static final String KEY_DOWNLOAD_HISTORY = "download_history";
 
 	private static final Type LIST_TYPE = new TypeToken<List<DownloadRecord>>() {
@@ -110,7 +113,8 @@ public final class DownloadHistoryRepository {
 		try {
 			List<DownloadRecord> items = gson.fromJson(json, LIST_TYPE);
 			return items != null ? items : new ArrayList<>();
-		} catch (Exception ignored) {
+		} catch (Exception e) {
+			Log.w(TAG, "readAllInternal: failed to deserialize download history", e);
 			return new ArrayList<>();
 		}
 	}

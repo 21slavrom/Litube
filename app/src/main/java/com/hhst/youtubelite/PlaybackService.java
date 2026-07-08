@@ -314,7 +314,8 @@ public class PlaybackService extends Service {
 					manager.notify(NOTIFICATION_ID, notification);
 				}
 			});
-		} catch (RejectedExecutionException ignored) {
+		} catch (RejectedExecutionException e) {
+			Log.d(TAG, "showNotification: executor saturated, thumbnail fetch skipped", e);
 		}
 	}
 
@@ -390,9 +391,6 @@ public class PlaybackService extends Service {
 		return destroyed || Thread.currentThread().isInterrupted();
 	}
 
-/**
- * Component that handles app logic.
- */
 	public class PlaybackBinder extends Binder {
 		public PlaybackService getService() {
 			return PlaybackService.this;

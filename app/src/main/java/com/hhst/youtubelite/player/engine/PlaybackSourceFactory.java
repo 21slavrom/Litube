@@ -35,9 +35,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Component that handles app logic.
- */
 @OptIn(markerClass = UnstableApi.class)
 class PlaybackSourceFactory {
 	private static final String TAG = "YTLPlayback";
@@ -159,7 +156,8 @@ class PlaybackSourceFactory {
 								new ByteArrayInputStream(manifest.getBytes(StandardCharsets.UTF_8)));
 				return sources.youtubeProgressiveDashFactory(live).createMediaSource(parsed);
 			}
-		} catch (Exception ignored) {
+		} catch (Exception e) {
+			Log.w(TAG, "createLiveMediaSource: DASH manifest parsing failed, falling back to progressive", e);
 		}
 		final MediaItem.Builder builder = MediaItem.fromUri(url).buildUpon();
 		if (stream.getFormat() != null) {
@@ -210,7 +208,8 @@ class PlaybackSourceFactory {
 				return null;
 			}
 			return url.trim();
-		} catch (IllegalArgumentException ignored) {
+		} catch (IllegalArgumentException e) {
+			Log.d(TAG, "normalizeUrl: malformed URL, returning null", e);
 			return null;
 		}
 	}

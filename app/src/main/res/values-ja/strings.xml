@@ -14,19 +14,13 @@
     <string name="audio_only">音声</string>
     <string name="close">閉じる</string>
     <string name="save">保存</string>
-    <string name="share">共有</string>
-    <string name="share_thumbnail">サムネイルを共有</string>
-    <string name="extension">拡張機能</string>
-    <string name="request_restart">変更を適用するには再起動してください</string>
-    <string name="restart">再起動</string>
+    <string name="share">共有</string>    <string name="extension">拡張機能</string>
     <string name="display_dislikes">低評価数を表示</string>
     <string name="hide_shorts">Shortsを非表示</string>
     <string name="action_pause">一時停止</string>
     <string name="action_play">再生</string>
     <string name="action_previous">前へ</string>
-    <string name="action_next">次へ</string>
-    <string name="general">外観</string>
-    <string name="player">再生</string>
+    <string name="action_next">次へ</string>    <string name="player">再生</string>
     <string name="sponsorblock">SponsorBlock</string>
     <string name="skip_sponsors">スポンサーをスキップ</string>
     <string name="skip_sponsors_selfpromo">自己宣伝をスキップ</string>
@@ -130,9 +124,7 @@
     <string name="no_queue_items">キュー項目はありません</string>
     <string name="queue_unknown_author">不明な作成者</string>
     <string name="queue_now_playing">再生中</string>
-    <string name="queue_download_unavailable">ダウンロード可能なキュー項目がありません</string>
-    <string name="player_gestures">プレイヤーのジェスチャー</string>
-    <string name="action_replay">再生し直す</string>
+    <string name="queue_download_unavailable">ダウンロード可能なキュー項目がありません</string>    <string name="action_replay">再生し直す</string>
     <string name="action_restore_watch">動画に戻る</string>
     <string name="playback_end_next">次を再生</string>
     <string name="playback_end_loop">動画をループ</string>
@@ -176,4 +168,40 @@
     <string name="playlist_download_batch_segment_partial">%1$d 件が一部成功</string>
     <string name="playlist_download_batch_segment_failed">%1$d 件が失敗</string>
     <string name="playlist_download_started">プレイリストのダウンロードを開始しました</string>
+    <string name="open_with">別のアプリで開く</string>
+    <string name="interface_category">インターフェース</string>
+    <string name="interface_summary">低評価数の表示、Shorts非表示</string>    <string name="set_as_default_app_title">デフォルトでリンクを開く</string>
+    <string name="set_as_default_app_message">Androidは自動的にLitubeをYouTubeリンクのデフォルトアプリにしません。システムのアプリ設定を開き、「デフォルトで開く」を有効にして、対応するリンクを承認してLitubeがYouTube URLを処理できるようにしてください。</string>
+    <string name="open_settings">設定を開く</string>
+    <string name="cast">キャスト</string>
+    <string name="casting_to">%1$s にキャスト中</string>    <string name="cast_stop">キャストを停止</string>
+    <string name="cast_connected_start_video">キャスト接続済み — 動画を再生してください</string>
+    <string name="cast_no_stream">この動画にはキャスト可能なストリームがありません</string>    <string name="cast_failed">キャストに失敗しました</string>
+    <string name="cast_disconnect">切断</string>    <string name="cast_no_devices_found">Castデバイスが見つかりません</string>
+    <string name="cast_no_devices_hint">キャストが同じネットワークで設定されていることを確認してください。</string>
+    <string name="cast_unavailable">キャストを使用できません</string>
+    <string name="cast_unavailable_hint">キャストにはGoogle Playサービスが必要です。ブラウザでの再生は引き続き利用できます。</string>
+    <string name="cast_learn_casting">キャストについて学ぶ</string>
+    <string name="cast_section_devices">利用可能なデバイス</string>
+    <string name="cast_section_connected">接続済みデバイス</string>
+    <string name="cast_section_link">任意のデバイスで開く</string>
+    <string name="cast_link_connected">ブラウザでリンクを開きました</string>
+    <string name="cast_link_close">リンクを閉じる</string>
+    <string name="cast_link_banner">リンク経由でストリーミング中</string>
+    <string name="playback_summary">再生位置、画質、速度、サイズ変更モード</string>
+    <string name="gesture">ジェスチャー</string>
+    <string name="gesture_summary">タップ、シーク、全画面コントロール</string>
+    <string name="gesture_single_tap">シングルタップ</string>
+    <string name="gesture_double_tap">ダブルタップ</string>
+    <string name="gesture_long_press_speed">長押し 2x</string>
+    <string name="gesture_seek">スワイプでシーク</string>
+    <string name="gesture_fullscreen_swipe">全画面の開始/終了</string>
+    <string name="enable_in_windowed">ウィンドウモードで有効</string>
+    <string name="enable_in_fullscreen">全画面で有効</string>
+    <string name="background_mini_player">バックグラウンド &amp; ミニプレーヤー</string>
+    <string name="background_mini_player_summary">PiP、ミニプレーヤー、バックグラウンド再生</string>
+    <string name="sponsorblock_summary">スポンサー、自己宣伝、ハイライト</string>
+    <string name="brightness">明るさ</string>
+    <string name="volume">音量</string>
+    <string name="reset_all_settings">すべての設定をリセット</string>
 </resources>

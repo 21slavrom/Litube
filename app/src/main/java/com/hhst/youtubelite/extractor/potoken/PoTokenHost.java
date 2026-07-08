@@ -5,6 +5,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.util.Log;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -36,6 +37,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext;
  */
 @Singleton
 public final class PoTokenHost {
+	private static final String TAG = "PoTokenHost";
 	private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
 					+ "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 	private static final String HOST_HTML_PREFIX =
@@ -110,6 +112,31 @@ public final class PoTokenHost {
 		}
 	}
 
+	/**
+	 * Destroys the host WebView and resets state. Must be called on the main
+	 * thread. After release, the next {@link #prewarm()} re-creates the WebView.
+	 * Intended for app shutdown or instrumentation tests; in normal use the
+	 * host is {@code @Singleton}-scoped and kept for the process lifetime.
+	 */
+	public void release() {
+		if (Looper.myLooper() != Looper.getMainLooper()) {
+			handler.post(this::release);
+			return;
+		}
+		final WebView view;
+		synchronized (lock) {
+			view = webView;
+			webView = null;
+			ready = false;
+			loading = false;
+			hostHtml = null;
+		}
+		if (view != null) {
+			view.removeJavascriptInterface(PoTokenBridge.JS_INTERFACE);
+			view.destroy();
+		}
+	}
+
 	public boolean isCurrentGeneration(long expectedGeneration) {
 		synchronized (lock) {
 			return ready && webView != null && generation == expectedGeneration;
@@ -139,7 +166,9 @@ public final class PoTokenHost {
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			return null;
-		} catch (ExecutionException | TimeoutException ignored) {
+		} catch (ExecutionException | TimeoutException e) {
+			Log.w(TAG, "evaluateForResult: JS evaluation failed: "
+					+ e.getClass().getSimpleName(), e);
 			future.cancel(true);
 			return null;
 		}
@@ -166,6 +195,8 @@ public final class PoTokenHost {
 	@SuppressLint("SetJavaScriptEnabled")
 	private void configureWebView(@NonNull WebView webView) {
 		WebSettings settings = webView.getSettings();
+		// JavaScript is required to run the po-token host page that exchanges
+		// context with the native bridge; without it the bridge is inert.
 		settings.setJavaScriptEnabled(true);
 		settings.setDomStorageEnabled(false);
 		settings.setDatabaseEnabled(false);

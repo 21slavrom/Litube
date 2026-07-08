@@ -108,9 +108,6 @@ public final class QueueTouch extends ItemTouchHelper.SimpleCallback {
 						.start();
 	}
 
-/**
- * Contract for app logic.
- */
 	public interface MoveCallback {
 		boolean onMove(int from, int to);
 	}

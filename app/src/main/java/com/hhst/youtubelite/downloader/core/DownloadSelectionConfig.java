@@ -19,9 +19,6 @@ public record DownloadSelectionConfig(
 		return primaryMediaMode != PrimaryMediaMode.NONE || subtitleEnabled || thumbnailEnabled;
 	}
 
-/**
- * Enumeration of app logic.
- */
 	public enum PrimaryMediaMode {
 		NONE,
 		VIDEO,

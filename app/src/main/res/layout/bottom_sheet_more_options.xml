@@ -49,6 +49,41 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/option_cast"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginEnd="16dp"
+            android:contentDescription="@string/cast"
+            android:src="@drawable/ic_cast"
+            android:tag="icon"
+            app:tint="?attr/colorControlNormal" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:tag="label"
+            android:text="@string/cast"
+            android:textSize="16sp" />
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_chevron_right"
+            app:tint="?attr/colorControlNormal" />
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/option_pip"
         android:layout_width="match_parent"
         android:layout_height="56dp"

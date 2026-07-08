@@ -10,6 +10,8 @@ import androidx.media3.datasource.cache.SimpleCache;
 
 import com.google.gson.Gson;
 import com.hhst.youtubelite.cache.WebViewCachePolicy;
+import com.hhst.youtubelite.core.JsonCache;
+import com.hhst.youtubelite.core.MmkvJsonCache;
 import com.tencent.mmkv.MMKV;
 
 import java.io.File;
@@ -59,9 +61,9 @@ public class CommonModule {
 						.cache(cache)
 						.dispatcher(createDispatcher())
 						.addNetworkInterceptor(chain -> {
-							var req = chain.request();
-							Response resp = chain.proceed(req);
-							return policy.maybeRewriteResponse(null, req, resp);
+							var request = chain.request();
+							Response response = chain.proceed(request);
+							return policy.maybeRewriteResponse(null, request, response);
 						})
 						.followRedirects(true)
 						.followSslRedirects(true)
@@ -95,6 +97,17 @@ public class CommonModule {
 	@Singleton
 	public MMKV provideMMKV() {
 		return MMKV.defaultMMKV();
+	}
+
+	/**
+	 * Binds the {@link JsonCache} abstraction to its {@link MmkvJsonCache}
+	 * implementation so callers can depend on the interface while Hilt resolves
+	 * the concrete type.
+	 */
+	@Provides
+	@Singleton
+	public JsonCache provideJsonCache(@NonNull MmkvJsonCache impl) {
+		return impl;
 	}
 
 	@Provides

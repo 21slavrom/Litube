@@ -1,15 +1,14 @@
 package com.hhst.youtubelite.downloader.core.history;
 
 /**
- * Enumeration of download lifecycle states.
+ * Lifecycle state of a download record.
  */
 public enum DownloadStatus {
-	QUEUED,
 	RUNNING,
+	QUEUED,
 	MERGING,
 	COMPLETED,
-	CANCELED,
 	FAILED,
+	CANCELED,
 	PAUSED
 }
-

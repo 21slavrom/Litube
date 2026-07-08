@@ -38,10 +38,7 @@ public final class MediaMuxer {
 		}
 	}
 
-/**
- * Component that handles app logic.
- */
-	private static class EmptyTrackException extends RuntimeException {
+	public static class EmptyTrackException extends RuntimeException {
 		public EmptyTrackException() {
 			super("No video or audio tracks found in the provided files.");
 		}

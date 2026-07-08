@@ -1,7 +1,6 @@
 package com.hhst.youtubelite.util;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -16,6 +15,14 @@ public final class PermissionUtils {
 	public static final int REQUEST_POST_NOTIFICATIONS = 100;
 	public static final int REQUEST_STORAGE_PERMISSION = 2001;
 
+	/**
+	 * Literal permission string for runtime requests. Using the constant
+	 * {@link Manifest.permission#POST_NOTIFICATIONS} here would trigger the
+	 * InlinedApi lint rule because the field is annotated as added in API 33,
+	 * even though the value is identical on every API level.
+	 */
+	private static final String POST_NOTIFICATIONS_PERMISSION = "android.permission.POST_NOTIFICATIONS";
+
 	private PermissionUtils() {
 	}
 
@@ -25,14 +32,13 @@ public final class PermissionUtils {
 
 	public static boolean hasPostNotificationsPermission(@NonNull Context context) {
 		if (!needsPostNotificationsPermission()) return true;
-		return ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+		return ContextCompat.checkSelfPermission(context, POST_NOTIFICATIONS_PERMISSION)
 						== PackageManager.PERMISSION_GRANTED;
 	}
 
-	@SuppressLint("InlinedApi")
 	@NonNull
 	public static String[] postNotificationsPermission() {
-		return new String[]{Manifest.permission.POST_NOTIFICATIONS};
+		return new String[]{POST_NOTIFICATIONS_PERMISSION};
 	}
 
 	public static boolean needsLegacyStoragePermission() {

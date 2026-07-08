@@ -1,5 +1,7 @@
 package com.hhst.youtubelite.extractor.potoken;
 
+import android.util.Log;
+
 import androidx.annotation.Nullable;
 
 import com.google.gson.JsonElement;
@@ -9,6 +11,8 @@ import com.google.gson.JsonParser;
  * JSON helpers for PoToken context payloads.
  */
 public final class PoTokenJsonUtils {
+
+	private static final String TAG = "PoTokenJsonUtils";
 
 	private PoTokenJsonUtils() {
 	}
@@ -29,7 +33,9 @@ public final class PoTokenJsonUtils {
 								: element.getAsJsonPrimitive().toString();
 			}
 			return element.toString();
-		} catch (Exception ignored) {
+		} catch (Exception e) {
+			Log.d(TAG, "normalizeEvaluateJavascriptResult: parse failed, returning raw value: "
+					+ e.getClass().getSimpleName());
 			return rawValue;
 		}
 	}

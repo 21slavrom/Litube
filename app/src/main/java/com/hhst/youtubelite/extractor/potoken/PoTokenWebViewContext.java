@@ -1,5 +1,7 @@
 package com.hhst.youtubelite.extractor.potoken;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -19,6 +21,8 @@ public record PoTokenWebViewContext(@NonNull String url,
                                     @Nullable String serializedExperimentFlags,
                                     boolean loggedIn,
                                     boolean premium) {
+
+	private static final String TAG = "PoTokenWebViewContext";
 
 	@Nullable
 	public static PoTokenWebViewContext fromJson(@Nullable String fallbackUrl,
@@ -62,7 +66,8 @@ public record PoTokenWebViewContext(@NonNull String url,
 							getString(object, "serializedExperimentFlags"),
 							getBoolean(object, "loggedIn"),
 							getBoolean(object, "premium"));
-		} catch (Exception ignored) {
+		} catch (Exception e) {
+			Log.w(TAG, "fromJson: failed to parse PoToken WebView context", e);
 			return null;
 		}
 	}
@@ -70,7 +75,7 @@ public record PoTokenWebViewContext(@NonNull String url,
 	@Nullable
 	private static String firstNonBlank(@Nullable String first,
 	                                    @Nullable String second) {
-		return first != null ? first : second;
+		return first != null && !first.isBlank() ? first : second;
 	}
 
 	private static boolean getBoolean(@NonNull JsonObject object,
@@ -81,7 +86,9 @@ public record PoTokenWebViewContext(@NonNull String url,
 		}
 		try {
 			return element.getAsBoolean();
-		} catch (Exception ignored) {
+		} catch (Exception e) {
+			Log.d(TAG, "getBoolean: key=" + key + " is not a boolean: "
+					+ e.getClass().getSimpleName());
 			return false;
 		}
 	}
@@ -95,7 +102,9 @@ public record PoTokenWebViewContext(@NonNull String url,
 		}
 		try {
 			return normalize(element.getAsString());
-		} catch (Exception ignored) {
+		} catch (Exception e) {
+			Log.d(TAG, "getString: key=" + key + " is not a string: "
+					+ e.getClass().getSimpleName());
 			return null;
 		}
 	}

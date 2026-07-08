@@ -8,7 +8,7 @@
     <string name="queue">Queue</string>
     <string name="add_to_queue">Add to queue</string>
     <string name="queue_item_added">Added to queue</string>
-    <string name="queue_item_unavailable">Couldn\'t get current video info. Queue item was not added.</string>
+    <string name="queue_item_unavailable">Could not get current video info. Queue item was not added.</string>
     <string name="queue_enabled_on">Queue playback enabled</string>
     <string name="queue_enabled_off">Queue playback disabled</string>
     <string name="clear_queue">Clear queue</string>
@@ -26,26 +26,35 @@
     <string name="download_finished">Download complete: \"%1$s\" saved to \"%2$s\"</string>
     <string name="failed_to_download">Failed to download</string>
     <string name="failed_to_download_thumbnail">Failed to download image</string>
-    <string name="audio_only">Audio</string>
-    <string name="player_gestures">Player gestures</string>
-    <string name="close">Close</string>
+    <string name="audio_only">Audio</string>    <string name="close">Close</string>
     <string name="save">Save</string>
     <string name="share">Share</string>
-    <string name="open_with">Open with</string>
-    <string name="share_thumbnail">Share Thumbnail</string>
-    <string name="extension">Extensions</string>
-    <string name="request_restart">Restart to apply changes</string>
-    <string name="restart">Restart</string>
+    <string name="open_with">Open with</string>    <string name="extension">Extensions</string>
     <string name="display_dislikes">Show dislikes</string>
     <string name="hide_shorts">Hide Shorts</string>
     <string name="action_pause">Pause</string>
     <string name="action_play">Play</string>
     <string name="action_replay">Replay</string>
     <string name="action_previous">Skip to previous</string>
-    <string name="action_next">Skip to next</string>
-    <string name="general">Appearance</string>
-    <string name="interface_category">Interface</string>
-    <string name="interface_summary">Show dislikes, hide Shorts</string>
+    <string name="action_next">Skip to next</string>    <string name="interface_category">Interface</string>
+    <string name="interface_summary">Show dislikes, hide Shorts</string>    <string name="set_as_default_app_title">Open links by default</string>
+    <string name="set_as_default_app_message">Android will not automatically make Litube the default for YouTube links. Open the system app settings, then enable \"Open by default\" and approve the supported links to let Litube handle YouTube URLs.</string>
+    <string name="open_settings">Open settings</string>
+    <string name="cast">Cast</string>
+    <string name="casting_to">Casting to %1$s</string>    <string name="cast_stop">Stop casting</string>
+    <string name="cast_connected_start_video">Cast connected — start playing a video</string>
+    <string name="cast_no_stream">No castable stream available for this video</string>    <string name="cast_failed">Casting failed</string>
+    <string name="cast_disconnect">Disconnect</string>    <string name="cast_no_devices_found">No Cast devices found</string>
+    <string name="cast_no_devices_hint">Make sure casting is set up on the same network.</string>
+    <string name="cast_unavailable">Cast unavailable</string>
+    <string name="cast_unavailable_hint">Cast needs Google Play Services. Browser playback still works.</string>
+    <string name="cast_learn_casting">Learn about casting</string>
+    <string name="cast_section_devices">Available devices</string>
+    <string name="cast_section_connected">Connected devices</string>
+    <string name="cast_section_link">Open on any device</string>
+    <string name="cast_link_connected">Link opened in browser</string>
+    <string name="cast_link_close">Close link</string>
+    <string name="cast_link_banner">Streaming via link</string>
     <string name="player">Playback</string>
     <string name="playback_summary">Position, quality, speed, resize mode</string>
     <string name="gesture">Gesture</string>
@@ -57,7 +66,7 @@
     <string name="gesture_fullscreen_swipe">Enter/exit fullscreen</string>
     <string name="enable_in_windowed">Enable in windowed</string>
     <string name="enable_in_fullscreen">Enable in fullscreen</string>
-    <string name="background_mini_player">Background &amp; Mini Player</string>
+    <string name="background_mini_player">Background &amp; mini player</string>
     <string name="background_mini_player_summary">PiP, mini-player, background playback</string>
     <string name="sponsorblock_summary">Sponsors, self-promo, highlights</string>
     <string name="brightness">Brightness</string>
@@ -123,15 +132,15 @@
     <string name="application_not_found">Application not found</string>
     <string name="press_back_again_to_exit">Press back again to exit</string>
     <string name="threads">Threads</string>
-    <string name="app_description">An advanced webview wrapper for YouTube.</string>
-    <string name="source_code">Source Code</string>
-    <string name="clear_cache">Clear Cache</string>
-    <string name="export_error_log">Export Error Log</string>
+    <string name="app_description">An advanced WebView wrapper for YouTube.</string>
+    <string name="source_code">Source code</string>
+    <string name="clear_cache">Clear cache</string>
+    <string name="export_error_log">Export error log</string>
     <string name="cache_cleared">Cache cleared</string>
     <string name="failed_to_export_log">Failed to export log</string>
     <string name="version">Version: %1$s</string>
-    <string name="check_for_updates">Check for Updates</string>
-    <string name="update_available">Update Available: %1$s</string>
+    <string name="check_for_updates">Check for updates</string>
+    <string name="update_available">Update available: %1$s</string>
     <string name="no_updates_available">You are using the latest version</string>
     <string name="checking_for_updates">Checking for updates…</string>
     <string name="failed_to_check_for_updates">Failed to check for updates</string>

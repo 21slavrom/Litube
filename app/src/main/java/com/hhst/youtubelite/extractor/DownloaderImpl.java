@@ -1,9 +1,11 @@
 package com.hhst.youtubelite.extractor;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.hhst.youtubelite.Constant;
+import com.hhst.youtubelite.AppConstants;
 
 import org.schabi.newpipe.extractor.downloader.Downloader;
 import org.schabi.newpipe.extractor.exceptions.ReCaptchaException;
@@ -36,6 +38,7 @@ import okhttp3.ResponseBody;
  */
 @Singleton
 public final class DownloaderImpl extends Downloader {
+	private static final String TAG = "DownloaderImpl";
 	private static final String YOUTUBE_RESTRICTED_MODE_COOKIE = "PREF=f2=8000000";
 
 	private final OkHttpClient client;
@@ -75,7 +78,7 @@ public final class DownloaderImpl extends Downloader {
 		RequestBody requestBody = null;
 		if (dataToSend != null) requestBody = RequestBody.create(dataToSend);
 
-		final Request.Builder builder = new Request.Builder().url(url).method(httpMethod, requestBody).header("User-Agent", Constant.USER_AGENT);
+		final Request.Builder builder = new Request.Builder().url(url).method(httpMethod, requestBody).header("User-Agent", AppConstants.USER_AGENT);
 		ExtractionSession session = scope.get();
 		AuthContext auth = session != null ? session.getAuth() : null;
 		String mergedCookies = mergeCookiesForUrl(
@@ -173,7 +176,8 @@ public final class DownloaderImpl extends Downloader {
 	private String getHost(@NonNull String url) {
 		try {
 			return URI.create(url).getHost();
-		} catch (IllegalArgumentException ignored) {
+		} catch (IllegalArgumentException e) {
+			Log.d(TAG, "getHost: malformed URL: " + e.getMessage());
 			return null;
 		}
 	}
@@ -182,8 +186,8 @@ public final class DownloaderImpl extends Downloader {
 		if (host == null) return false;
 		String lowerHost = host.toLowerCase(Locale.US);
 		return lowerHost.equals("youtu.be")
-						|| lowerHost.equals(Constant.YOUTUBE_DOMAIN)
-						|| lowerHost.endsWith("." + Constant.YOUTUBE_DOMAIN);
+						|| lowerHost.equals(AppConstants.YOUTUBE_DOMAIN)
+						|| lowerHost.endsWith("." + AppConstants.YOUTUBE_DOMAIN);
 	}
 
 	private boolean hasHeader(@Nullable Map<String, List<String>> headers,
@@ -199,9 +203,6 @@ public final class DownloaderImpl extends Downloader {
 		return false;
 	}
 
-/**
- * Contract for app logic.
- */
 	@FunctionalInterface
 	interface StreamInfoSupplier<T> {
 		T get() throws org.schabi.newpipe.extractor.exceptions.ExtractionException, IOException;

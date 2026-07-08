@@ -1,5 +1,7 @@
 package com.hhst.youtubelite.downloader.core;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -24,6 +26,8 @@ import java.util.Map;
  * Factory that builds download tasks from selected streams.
  */
 public final class DownloadTaskFactory {
+
+	private static final String TAG = "DownloadTaskFactory";
 
 	@NonNull
 	public String sanitizeFileName(@Nullable String rawName) {
@@ -287,7 +291,8 @@ public final class DownloadTaskFactory {
 		if (digits.isBlank()) return -1;
 		try {
 			return Integer.parseInt(digits);
-		} catch (NumberFormatException ignored) {
+		} catch (NumberFormatException e) {
+			Log.d(TAG, "extractResolution: non-numeric resolution", e);
 			return -1;
 		}
 	}

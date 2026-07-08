@@ -1,9 +1,12 @@
 package com.hhst.youtubelite;
 
 /**
- * Shared constants used across the app.
+ * App-wide constants: URLs, page identifiers, preference keys shared between
+ * the extension layer and the player, and the user agent used for upstream
+ * HTTP requests. Renamed from {@code Constant} so the three former
+ * {@code Constant} classes in the codebase are now distinguishable by name.
  */
-public final class Constant {
+public final class AppConstants {
 	public static final String LOGGING_FILENAME = "log.txt";
 	public static final String HOME_URL = "https://m.youtube.com";
 	public static final String YOUTUBE_DOMAIN = "youtube.com";
@@ -23,6 +26,6 @@ public final class Constant {
 	public static final String REMEMBER_RESIZE_MODE = "remember_resize_mode";
 	public static String USER_AGENT = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36";
 
-	private Constant() {
+	private AppConstants() {
 	}
 }

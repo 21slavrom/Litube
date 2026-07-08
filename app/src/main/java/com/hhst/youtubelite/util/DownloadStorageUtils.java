@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.webkit.MimeTypeMap;
 
 import androidx.annotation.NonNull;
@@ -30,6 +31,7 @@ import java.util.Locale;
  * Utility that publishes completed downloads into shared storage.
  */
 public final class DownloadStorageUtils {
+	private static final String TAG = "DownloadStorageUtils";
 	private static final String WORK_DIR_NAME = "download_work";
 
 	private DownloadStorageUtils() {
@@ -90,7 +92,8 @@ public final class DownloadStorageUtils {
 		if (isContentUri(outputReference)) {
 			try (var cursor = context.getContentResolver().query(Uri.parse(outputReference), new String[]{MediaStore.MediaColumns._ID}, null, null, null)) {
 				return cursor == null || !cursor.moveToFirst();
-			} catch (Exception ignored) {
+			} catch (Exception e) {
+				Log.w(TAG, "doesNotExist: failed to query content uri existence", e);
 				return true;
 			}
 		}
@@ -103,7 +106,8 @@ public final class DownloadStorageUtils {
 			try {
 				context.getContentResolver().delete(Uri.parse(outputReference), null, null);
 				return;
-			} catch (Exception ignored) {
+			} catch (Exception e) {
+				Log.w(TAG, "delete: failed to delete content uri", e);
 				return;
 			}
 		}
@@ -125,7 +129,8 @@ public final class DownloadStorageUtils {
 			try {
 				String contentType = context.getContentResolver().getType(Uri.parse(outputReference));
 				if (contentType != null && !contentType.isBlank()) return contentType;
-			} catch (RuntimeException ignored) {
+			} catch (RuntimeException e) {
+				Log.d(TAG, "getMimeType: content resolver getType failed", e);
 			}
 		}
 		if (outputReference != null && !outputReference.isBlank() && !isContentUri(outputReference)) {
@@ -151,7 +156,8 @@ public final class DownloadStorageUtils {
 		try {
 			String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
 			if (mimeType != null && !mimeType.isBlank()) return mimeType;
-		} catch (RuntimeException ignored) {
+		} catch (RuntimeException e) {
+			Log.d(TAG, "guessMimeType: MimeTypeMap lookup failed", e);
 		}
 		return switch (extension) {
 			case "mp4" -> "video/mp4";

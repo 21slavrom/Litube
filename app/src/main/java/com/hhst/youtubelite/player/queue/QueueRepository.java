@@ -1,5 +1,7 @@
 package com.hhst.youtubelite.player.queue;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
@@ -24,6 +26,7 @@ import javax.inject.Singleton;
  */
 @Singleton
 public final class QueueRepository {
+	private static final String TAG = "QueueRepository";
 	static final String KEY_QUEUE_ITEMS = "local_queue_items";
 	static final String KEY_QUEUE_ENABLED = "local_queue_enabled";
 	private static final Type LIST_TYPE = new TypeToken<List<QueueItem>>() {
@@ -204,7 +207,8 @@ public final class QueueRepository {
 		try {
 			List<QueueItem> items = gson.fromJson(json, LIST_TYPE);
 			return items != null ? items : new ArrayList<>();
-		} catch (Exception ignored) {
+		} catch (Exception e) {
+			Log.w(TAG, "readItems: failed to deserialize queue items, returning empty list", e);
 			return new ArrayList<>();
 		}
 	}

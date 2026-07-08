@@ -7,7 +7,6 @@ import androidx.annotation.NonNull;
 import com.hhst.youtubelite.downloader.core.LiteDownloader;
 import com.hhst.youtubelite.downloader.core.MediaMuxer;
 import com.hhst.youtubelite.downloader.core.ProgressCallback;
-import com.hhst.youtubelite.downloader.core.ProgressCallback2;
 import com.hhst.youtubelite.downloader.core.StreamDownloader;
 import com.hhst.youtubelite.downloader.core.Task;
 
@@ -34,45 +33,37 @@ import dagger.hilt.android.qualifiers.ApplicationContext;
 @Singleton
 public class LiteDownloaderImpl implements LiteDownloader {
 	private final Context context;
-	private final StreamDownloader streamDL;
-	private final MediaMerger mediaMerger;
+	private final StreamDownloader streamDownloader;
 	private final ExecutorService executor = Executors.newCachedThreadPool();
 	private final Map<String, Task> tasks = new ConcurrentHashMap<>();
-	private final Map<String, ProgressCallback2> callbacks = new ConcurrentHashMap<>();
+	private final Map<String, ProgressCallback> callbacks = new ConcurrentHashMap<>();
 
 	@Inject
-	public LiteDownloaderImpl(@ApplicationContext Context ctx,
-	                          StreamDownloader streamDL) {
-		this(ctx, streamDL, MediaMuxer::merge);
-	}
-
-	LiteDownloaderImpl(@ApplicationContext Context ctx,
-	                   StreamDownloader streamDL,
-	                   MediaMerger mediaMerger) {
-		this.context = ctx;
-		this.streamDL = streamDL;
-		this.mediaMerger = mediaMerger;
+	public LiteDownloaderImpl(@ApplicationContext Context context,
+	                          StreamDownloader streamDownloader) {
+		this.context = context;
+		this.streamDownloader = streamDownloader;
 	}
 
 	@Override
-	public void setCallback(@NonNull String videoId, ProgressCallback2 callback) {
+	public void setCallback(@NonNull String videoId, ProgressCallback callback) {
 		if (callback != null) callbacks.put(videoId, callback);
 		else callbacks.remove(videoId);
 	}
 
 	@Override
-	public void download(@NonNull Task t) {
-		tasks.put(t.videoId(), t);
-		if (t.subtitle() != null) {
-			exec(t, () -> FileUtils.copyURLToFile(new URL(t.subtitle().getContent()), outputFile(t)));
-		} else if (t.thumbnail() != null) {
-			exec(t, () -> FileUtils.copyURLToFile(new URL(t.thumbnail()), outputFile(t)));
+	public void download(@NonNull Task task) {
+		tasks.put(task.videoId(), task);
+		if (task.subtitle() != null) {
+			exec(task, () -> FileUtils.copyURLToFile(new URL(task.subtitle().getContent()), outputFile(task)));
+		} else if (task.thumbnail() != null) {
+			exec(task, () -> FileUtils.copyURLToFile(new URL(task.thumbnail()), outputFile(task)));
 		} else {
-			downloadMedia(t);
+			downloadMedia(task);
 		}
 	}
 
-	private void exec(Task task, RunnableIOC run) {
+	private void exec(Task task, ThrowingRunnable run) {
 		CompletableFuture.runAsync(() -> {
 			try {
 				run.run();
@@ -80,57 +71,56 @@ public class LiteDownloaderImpl implements LiteDownloader {
 			} catch (Exception e) {
 				throw new CompletionException(e);
 			}
-		}, executor).exceptionally(e -> handleErr(task, e));
+		}, executor).exceptionally(e -> handleError(task, e));
 	}
 
 	private void downloadMedia(Task task) {
-		// Download audio and video separately, then merge when needed.
-		streamDL.setMaxThreadCount(task.threadCount());
-		File vF = tmp(task, "_v"), aF = tmp(task, "_a"), out = outputFile(task);
-		long vSz = len(task.video()), aSz = len(task.audio());
+		streamDownloader.setMaxThreadCount(task.threadCount());
+		File videoFile = tempFile(task, "_v"), audioFile = tempFile(task, "_a"), output = outputFile(task);
+		long videoSize = contentLength(task.video()), audioSize = contentLength(task.audio());
 
-		Aggregator agg = new Aggregator(vSz, aSz, (p, d, tot) -> progress(task.videoId(), p, d, tot));
+		Aggregator aggregator = new Aggregator(videoSize, audioSize, (progress, downloaded, total) -> progress(task.videoId(), progress, downloaded, total));
 
-		CompletableFuture<File> vFut = task.video() == null ? null : streamDL.download(task.video().getContent(), vF, createProgressAdapter(p -> {
-			if (aSz > 0) agg.updV(p);
-			else progress(task.videoId(), p, (long) (vSz * (p / 100.0)), vSz);
+		CompletableFuture<File> videoFuture = task.video() == null ? null : streamDownloader.download(task.video().getContent(), videoFile, createProgressAdapter(progress -> {
+			if (audioSize > 0) aggregator.updateVideo(progress);
+			else progress(task.videoId(), progress, (long) (videoSize * (progress / 100.0)), videoSize);
 		}));
 
-		CompletableFuture<File> aFut = task.audio() == null ? null : streamDL.download(task.audio().getContent(), aF, createProgressAdapter(p -> {
-			if (vSz > 0) agg.updA(p);
-			else progress(task.videoId(), p, (long) (aSz * (p / 100.0)), aSz);
+		CompletableFuture<File> audioFuture = task.audio() == null ? null : streamDownloader.download(task.audio().getContent(), audioFile, createProgressAdapter(progress -> {
+			if (videoSize > 0) aggregator.updateAudio(progress);
+			else progress(task.videoId(), progress, (long) (audioSize * (progress / 100.0)), audioSize);
 		}));
 
-		(vFut != null && aFut != null ? CompletableFuture.allOf(vFut, aFut) : (vFut != null ? vFut : aFut)).thenRun(() -> {
+		(videoFuture != null && audioFuture != null ? CompletableFuture.allOf(videoFuture, audioFuture) : (videoFuture != null ? videoFuture : audioFuture)).thenRun(() -> {
 			try {
 				if (!tasks.containsKey(task.videoId())) return;
-				if (vFut != null && aFut != null) {
-					notify(task.videoId(), ProgressCallback2::onMerge);
-					File mF = tmp(task, "_m");
+				if (videoFuture != null && audioFuture != null) {
+					notify(task.videoId(), ProgressCallback::onMerge);
+					File mergedFile = tempFile(task, "_m");
 					try {
-						mediaMerger.merge(vF, aF, mF);
-						FileUtils.moveFile(mF, out);
+						MediaMuxer.merge(videoFile, audioFile, mergedFile);
+						FileUtils.moveFile(mergedFile, output);
 					} finally {
-						FileUtils.deleteQuietly(vF);
-						FileUtils.deleteQuietly(aF);
-						FileUtils.deleteQuietly(mF);
+						FileUtils.deleteQuietly(videoFile);
+						FileUtils.deleteQuietly(audioFile);
+						FileUtils.deleteQuietly(mergedFile);
 					}
 				} else {
-					FileUtils.moveFile(vFut != null ? vF : aF, out);
+					FileUtils.moveFile(videoFuture != null ? videoFile : audioFile, output);
 				}
-				complete(task.videoId(), out);
+				complete(task.videoId(), output);
 			} catch (Exception e) {
 				throw new CompletionException(e);
 			}
-		}).exceptionally(e -> handleErr(task, e));
+		}).exceptionally(e -> handleError(task, e));
 	}
 
 	@Override
 	public boolean pause(@NonNull String videoId) {
 		Task task = tasks.get(videoId);
 		if (task == null) return false;
-		if (task.video() != null) streamDL.pause(task.video().getContent());
-		if (task.audio() != null) streamDL.pause(task.audio().getContent());
+		if (task.video() != null) streamDownloader.pause(task.video().getContent());
+		if (task.audio() != null) streamDownloader.pause(task.audio().getContent());
 		return task.video() != null || task.audio() != null;
 	}
 
@@ -138,20 +128,20 @@ public class LiteDownloaderImpl implements LiteDownloader {
 	public boolean resume(@NonNull String videoId) {
 		Task task = tasks.get(videoId);
 		if (task == null) return false;
-		if (task.video() != null) streamDL.resume(task.video().getContent());
-		if (task.audio() != null) streamDL.resume(task.audio().getContent());
+		if (task.video() != null) streamDownloader.resume(task.video().getContent());
+		if (task.audio() != null) streamDownloader.resume(task.audio().getContent());
 		return task.video() != null || task.audio() != null;
 	}
 
 	@Override
 	public void cancel(@NonNull String videoId) {
-		Task t = tasks.remove(videoId);
+		Task task = tasks.remove(videoId);
 		try {
-			if (t == null) return;
-			if (t.video() != null) streamDL.cancel(t.video().getContent());
-			if (t.audio() != null) streamDL.cancel(t.audio().getContent());
-			notify(videoId, ProgressCallback2::onCancel);
-			clean(t);
+			if (task == null) return;
+			if (task.video() != null) streamDownloader.cancel(task.video().getContent());
+			if (task.audio() != null) streamDownloader.cancel(task.audio().getContent());
+			notify(videoId, ProgressCallback::onCancel);
+			clean(task);
 		} finally {
 			clearCallback(videoId);
 		}
@@ -160,7 +150,7 @@ public class LiteDownloaderImpl implements LiteDownloader {
 	private ProgressCallback createProgressAdapter(java.util.function.IntConsumer action) {
 		return new ProgressCallback() {
 			@Override
-			public void onProgress(int progress) {
+			public void onProgress(int progress, long downloadedBytes, long totalBytes) {
 				action.accept(progress);
 			}
 
@@ -178,33 +168,33 @@ public class LiteDownloaderImpl implements LiteDownloader {
 		};
 	}
 
-	private Void handleErr(Task t, Throwable e) {
-		Throwable cause = e instanceof CompletionException ? e.getCause() : e;
+	private Void handleError(Task task, Throwable error) {
+		Throwable cause = error instanceof CompletionException ? error.getCause() : error;
 		try {
-			if (tasks.containsKey(t.videoId())) {
-				notify(t.videoId(), callback -> callback.onError(cause instanceof Exception ? (Exception) cause : new Exception(cause)));
-				clean(tasks.remove(t.videoId()));
+			if (tasks.containsKey(task.videoId())) {
+				notify(task.videoId(), callback -> callback.onError(cause instanceof Exception ? (Exception) cause : new Exception(cause)));
+				clean(tasks.remove(task.videoId()));
 			}
 		} finally {
-			clearCallback(t.videoId());
+			clearCallback(task.videoId());
 		}
 		return null;
 	}
 
-	private void complete(String videoId, File f) {
+	private void complete(String videoId, File file) {
 		try {
-			if (tasks.remove(videoId) != null) notify(videoId, callback -> callback.onComplete(f));
+			if (tasks.remove(videoId) != null) notify(videoId, callback -> callback.onComplete(file));
 		} finally {
 			clearCallback(videoId);
 		}
 	}
 
-	private void progress(String videoId, int p, long downloaded, long total) {
-		notify(videoId, callback -> callback.onProgress(p, downloaded, total));
+	private void progress(String videoId, int progress, long downloaded, long total) {
+		notify(videoId, callback -> callback.onProgress(progress, downloaded, total));
 	}
 
 	private void notify(String videoId, CallbackAction action) {
-		ProgressCallback2 callback = callbacks.get(videoId);
+		ProgressCallback callback = callbacks.get(videoId);
 		if (callback != null) action.run(callback);
 	}
 
@@ -214,13 +204,13 @@ public class LiteDownloaderImpl implements LiteDownloader {
 
 	private void clean(Task task) {
 		if (task == null) return;
-		if (task.video() != null) FileUtils.deleteQuietly(tmp(task, "_v"));
-		if (task.audio() != null) FileUtils.deleteQuietly(tmp(task, "_a"));
-		if (task.video() != null && task.audio() != null) FileUtils.deleteQuietly(tmp(task, "_m"));
+		if (task.video() != null) FileUtils.deleteQuietly(tempFile(task, "_v"));
+		if (task.audio() != null) FileUtils.deleteQuietly(tempFile(task, "_a"));
+		if (task.video() != null && task.audio() != null) FileUtils.deleteQuietly(tempFile(task, "_m"));
 		FileUtils.deleteQuietly(outputFile(task));
 	}
 
-	private File tmp(Task task, String suffix) {
+	private File tempFile(Task task, String suffix) {
 		return new File(context.getCacheDir(), taskFileKey(task) + suffix + ".tmp");
 	}
 
@@ -238,65 +228,52 @@ public class LiteDownloaderImpl implements LiteDownloader {
 		return task.videoId().replaceAll("[\\\\/:*?\"<>|]", "_");
 	}
 
-	private long len(Stream s) {
+	private long contentLength(Stream stream) {
 		try {
-			return s.getItagItem().getContentLength();
+			return stream.getItagItem().getContentLength();
 		} catch (Exception e) {
 			return 0;
 		}
 	}
 
-/**
- * Contract for app logic.
- */
-	interface RunnableIOC {
+	interface ThrowingRunnable {
 		void run() throws Exception;
 	}
 
-	interface MediaMerger {
-		void merge(@NonNull File videoFile, @NonNull File audioFile, @NonNull File outputFile) throws Exception;
-	}
-
-/**
- * Contract for app logic.
- */
 	interface CallbackAction {
-		void run(ProgressCallback2 cb);
+		void run(ProgressCallback callback);
 	}
 
 	interface ProgressUpdateListener {
 		void onUpdate(int progress, long downloaded, long total);
 	}
 
-/**
- * Component that handles app logic.
- */
 	private static class Aggregator {
-		final long vSz, aSz, tot;
+		final long videoSize, audioSize, totalSize;
 		final ProgressUpdateListener listener;
-		int vP, aP;
+		int videoProgress, audioProgress;
 
-		Aggregator(long v, long a, ProgressUpdateListener l) {
-			vSz = Math.max(v, 1);
-			aSz = Math.max(a, 1);
-			tot = vSz + aSz;
-			listener = l;
+		Aggregator(long videoSize, long audioSize, ProgressUpdateListener listener) {
+			this.videoSize = Math.max(videoSize, 1);
+			this.audioSize = Math.max(audioSize, 1);
+			this.totalSize = this.videoSize + this.audioSize;
+			this.listener = listener;
 		}
 
-		synchronized void updV(int p) {
-			vP = p;
+		synchronized void updateVideo(int progress) {
+			videoProgress = progress;
 			calc();
 		}
 
-		synchronized void updA(int p) {
-			aP = p;
+		synchronized void updateAudio(int progress) {
+			audioProgress = progress;
 			calc();
 		}
 
 		void calc() {
-			int totalProgress = (int) ((vP * vSz + aP * aSz) / tot);
-			long downloaded = (long) (vSz * (vP / 100.0) + aSz * (aP / 100.0));
-			listener.onUpdate(totalProgress, downloaded, tot);
+			int totalProgress = (int) ((videoProgress * videoSize + audioProgress * audioSize) / totalSize);
+			long downloaded = (long) (videoSize * (videoProgress / 100.0) + audioSize * (audioProgress / 100.0));
+			listener.onUpdate(totalProgress, downloaded, totalSize);
 		}
 	}
 }

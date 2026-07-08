@@ -4,9 +4,6 @@ import androidx.annotation.OptIn;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.exoplayer.DefaultLoadControl;
 
-/**
- * Component that handles app logic.
- */
 @OptIn(markerClass = UnstableApi.class)
 class PlayerLoadControl {
 	private PlayerLoadControl() {

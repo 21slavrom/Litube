@@ -1,25 +1,31 @@
 package com.hhst.youtubelite.extension;
 
-import static com.hhst.youtubelite.Constant.ENABLE_BACKGROUND_PLAY;
-import static com.hhst.youtubelite.Constant.ENABLE_IN_APP_MINI_PLAYER;
-import static com.hhst.youtubelite.Constant.ENABLE_PIP;
-import static com.hhst.youtubelite.Constant.REMEMBER_LAST_POSITION;
-import static com.hhst.youtubelite.Constant.REMEMBER_RESIZE_MODE;
-import static com.hhst.youtubelite.Constant.SKIP_POI_HIGHLIGHT;
-import static com.hhst.youtubelite.Constant.SKIP_SELF_PROMO;
-import static com.hhst.youtubelite.Constant.SKIP_SPONSORS;
+import static com.hhst.youtubelite.AppConstants.ENABLE_BACKGROUND_PLAY;
+import static com.hhst.youtubelite.AppConstants.ENABLE_IN_APP_MINI_PLAYER;
+import static com.hhst.youtubelite.AppConstants.ENABLE_PIP;
+import static com.hhst.youtubelite.AppConstants.REMEMBER_LAST_POSITION;
+import static com.hhst.youtubelite.AppConstants.REMEMBER_RESIZE_MODE;
+import static com.hhst.youtubelite.AppConstants.SKIP_POI_HIGHLIGHT;
+import static com.hhst.youtubelite.AppConstants.SKIP_SELF_PROMO;
+import static com.hhst.youtubelite.AppConstants.SKIP_SPONSORS;
 
 import java.util.List;
 import java.util.Map;
 
 /**
- * Shared constants used across the app.
+ * Preference keys for the extension layer and the {@code DEFAULT_PREFERENCES}
+ * map that seeds MMKV on first launch. Renamed from {@code Constant} so the
+ * class name reflects its contents (string keys, not numeric constants or
+ * URLs) and is no longer ambiguous with {@link com.hhst.youtubelite.AppConstants}.
  */
-public final class Constant {
+public final class PreferenceKeys {
 	public static final String ENABLE_DISPLAY_DISLIKES = "enable_display_dislikes";
 	public static final String ENABLE_HIDE_SHORTS = "enable_hide_shorts";
 	public static final String REMEMBER_QUALITY = "remember_quality";
+	// Action keys are not boolean toggles and are intentionally excluded from DEFAULT_PREFERENCES.
+	public static final String ACTION_SET_DEFAULT_APP = "action_set_default_app";
 	public static final String REMEMBER_PLAYBACK_SPEED = "remember_playback_speed";
+	public static final String USE_ORIGINAL_TITLE = "use_original_title";
 	// Legacy key kept for migration only.
 	public static final String ENABLE_PLAYER_GESTURES = "enable_player_gestures";
 	public static final String GESTURE_TAP_WINDOWED = "gesture_tap_windowed";
@@ -65,6 +71,7 @@ public final class Constant {
 					Map.entry(ENABLE_IN_APP_MINI_PLAYER, true),
 					Map.entry(REMEMBER_RESIZE_MODE, false),
 					Map.entry(REMEMBER_PLAYBACK_SPEED, false),
+					Map.entry(USE_ORIGINAL_TITLE, false),
 					Map.entry(GESTURE_TAP_WINDOWED, true),
 					Map.entry(GESTURE_TAP_FULLSCREEN, true),
 					Map.entry(GESTURE_DOUBLE_TAP_WINDOWED, true),
@@ -81,6 +88,6 @@ public final class Constant {
 					Map.entry(GESTURE_FULLSCREEN_FULLSCREEN, true)
 	);
 
-	private Constant() {
+	private PreferenceKeys() {
 	}
 }

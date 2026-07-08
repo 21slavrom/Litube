@@ -25,9 +25,10 @@ import androidx.core.view.WindowInsetsCompat;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.hhst.youtubelite.Constant;
+import com.hhst.youtubelite.AppConstants;
 import com.hhst.youtubelite.R;
 import com.hhst.youtubelite.cache.AppCacheCleaner;
+import com.hhst.youtubelite.core.AppScope;
 import com.hhst.youtubelite.util.ToastUtils;
 
 import org.apache.commons.io.FileUtils;
@@ -175,7 +176,7 @@ public class AboutActivity extends AppCompatActivity {
 	}
 
 	private void clearAppCache() {
-		new Thread(() -> {
+		AppScope.launchIO(() -> {
 			try {
 				appCacheCleaner.clear(AboutActivity.this);
 				ToastUtils.show(AboutActivity.this, R.string.cache_cleared);
@@ -185,21 +186,22 @@ public class AboutActivity extends AppCompatActivity {
 			} catch (Exception e) {
 				Log.e(TAG, "Failed to clear cache", e);
 			}
-		}).start();
+		});
 	}
 
 	private void exportLogs() {
-		new Thread(() -> {
+		AppScope.launchIO(() -> {
 			try {
 				String version = "unknown";
 				try {
 					version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-				} catch (Exception ignored) {
+				} catch (Exception e) {
+					Log.w(TAG, "exportLogs: failed to read package version", e);
 				}
 
 				String time = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
 				File destFile = new File(getExternalCacheDir(), "litube_error_log_" + time + ".txt");
-				File srcFile = new File(getFilesDir(), Constant.LOGGING_FILENAME);
+				File srcFile = new File(getFilesDir(), AppConstants.LOGGING_FILENAME);
 
 				String header = String.format(Locale.US, "--------- Device Info ---------\nDevice: %s\nModel: %s\nAndroid: %s\nApp Version: %s\n-------------------------------\n\n", Build.DEVICE, Build.MODEL, Build.VERSION.RELEASE, version);
 
@@ -219,25 +221,24 @@ public class AboutActivity extends AppCompatActivity {
 				Log.e(TAG, "Log export error", e);
 				ToastUtils.show(this, R.string.failed_to_export_log);
 			}
-		}).start();
+		});
 	}
 
-	private boolean isNewerVersion(String cur, String latest) {
-		if (cur == null || latest == null) return false;
+	private boolean isNewerVersion(String current, String latest) {
+		if (current == null || latest == null) return false;
 
-		// Strip the optional v prefix before comparing versions.
-		String c = cur.startsWith("v") ? cur.substring(1) : cur;
-		String l = latest.startsWith("v") ? latest.substring(1) : latest;
+		String currentStr = current.startsWith("v") ? current.substring(1) : current;
+		String latestStr = latest.startsWith("v") ? latest.substring(1) : latest;
 
-		String[] curParts = c.split("\\.");
-		String[] latestParts = l.split("\\.");
-		int length = Math.max(curParts.length, latestParts.length);
+		String[] currentParts = currentStr.split("\\.");
+		String[] latestParts = latestStr.split("\\.");
+		int length = Math.max(currentParts.length, latestParts.length);
 
 		for (int i = 0; i < length; i++) {
-			int cPart = i < curParts.length ? Integer.parseInt(curParts[i].replaceAll("\\D", "")) : 0;
-			int lPart = i < latestParts.length ? Integer.parseInt(latestParts[i].replaceAll("\\D", "")) : 0;
-			if (lPart > cPart) return true;
-			if (lPart < cPart) return false;
+			int currentPart = i < currentParts.length ? Integer.parseInt(currentParts[i].replaceAll("\\D", "")) : 0;
+			int latestPart = i < latestParts.length ? Integer.parseInt(latestParts[i].replaceAll("\\D", "")) : 0;
+			if (latestPart > currentPart) return true;
+			if (latestPart < currentPart) return false;
 		}
 		return false;
 	}

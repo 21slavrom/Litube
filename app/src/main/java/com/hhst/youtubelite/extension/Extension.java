@@ -1,13 +1,13 @@
 package com.hhst.youtubelite.extension;
 
-import static com.hhst.youtubelite.Constant.ENABLE_BACKGROUND_PLAY;
-import static com.hhst.youtubelite.Constant.ENABLE_IN_APP_MINI_PLAYER;
-import static com.hhst.youtubelite.Constant.ENABLE_PIP;
-import static com.hhst.youtubelite.Constant.REMEMBER_LAST_POSITION;
-import static com.hhst.youtubelite.Constant.REMEMBER_RESIZE_MODE;
-import static com.hhst.youtubelite.Constant.SKIP_POI_HIGHLIGHT;
-import static com.hhst.youtubelite.Constant.SKIP_SELF_PROMO;
-import static com.hhst.youtubelite.Constant.SKIP_SPONSORS;
+import static com.hhst.youtubelite.AppConstants.ENABLE_BACKGROUND_PLAY;
+import static com.hhst.youtubelite.AppConstants.ENABLE_IN_APP_MINI_PLAYER;
+import static com.hhst.youtubelite.AppConstants.ENABLE_PIP;
+import static com.hhst.youtubelite.AppConstants.REMEMBER_LAST_POSITION;
+import static com.hhst.youtubelite.AppConstants.REMEMBER_RESIZE_MODE;
+import static com.hhst.youtubelite.AppConstants.SKIP_POI_HIGHLIGHT;
+import static com.hhst.youtubelite.AppConstants.SKIP_SELF_PROMO;
+import static com.hhst.youtubelite.AppConstants.SKIP_SPONSORS;
 
 import com.hhst.youtubelite.R;
 
@@ -25,43 +25,43 @@ public record Extension(String key, int title, int summary, int icon, List<Exten
 	public static Extension root() {
 		return page(R.string.extension, 0, 0, List.of(
 						page(R.string.interface_category, R.string.interface_summary, R.drawable.ic_settings, List.of(
-										toggle(Constant.ENABLE_DISPLAY_DISLIKES, R.string.display_dislikes),
-										toggle(Constant.ENABLE_HIDE_SHORTS, R.string.hide_shorts)
+										toggle(PreferenceKeys.ENABLE_DISPLAY_DISLIKES, R.string.display_dislikes),
+										toggle(PreferenceKeys.ENABLE_HIDE_SHORTS, R.string.hide_shorts)
 						)),
 						page(R.string.player, R.string.playback_summary, R.drawable.ic_play, List.of(
 										toggle(REMEMBER_LAST_POSITION, R.string.remember_last_position),
-										toggle(Constant.REMEMBER_QUALITY, R.string.remember_quality),
-										toggle(Constant.REMEMBER_PLAYBACK_SPEED, R.string.remember_playback_speed),
+										toggle(PreferenceKeys.REMEMBER_QUALITY, R.string.remember_quality),
+										toggle(PreferenceKeys.REMEMBER_PLAYBACK_SPEED, R.string.remember_playback_speed),
 										toggle(REMEMBER_RESIZE_MODE, R.string.remember_resize_mode)
 						)),
 						page(R.string.gesture, R.string.gesture_summary, R.drawable.ic_gesture, List.of(
 										page(R.string.gesture_single_tap, 0, 0, List.of(
-														toggle(Constant.GESTURE_TAP_WINDOWED, R.string.enable_in_windowed),
-														toggle(Constant.GESTURE_TAP_FULLSCREEN, R.string.enable_in_fullscreen)
+														toggle(PreferenceKeys.GESTURE_TAP_WINDOWED, R.string.enable_in_windowed),
+														toggle(PreferenceKeys.GESTURE_TAP_FULLSCREEN, R.string.enable_in_fullscreen)
 										)),
 										page(R.string.gesture_double_tap, 0, 0, List.of(
-														toggle(Constant.GESTURE_DOUBLE_TAP_WINDOWED, R.string.enable_in_windowed),
-														toggle(Constant.GESTURE_DOUBLE_TAP_FULLSCREEN, R.string.enable_in_fullscreen)
+														toggle(PreferenceKeys.GESTURE_DOUBLE_TAP_WINDOWED, R.string.enable_in_windowed),
+														toggle(PreferenceKeys.GESTURE_DOUBLE_TAP_FULLSCREEN, R.string.enable_in_fullscreen)
 										)),
 										page(R.string.gesture_long_press_speed, 0, 0, List.of(
-														toggle(Constant.GESTURE_LONG_PRESS_WINDOWED, R.string.enable_in_windowed),
-														toggle(Constant.GESTURE_LONG_PRESS_FULLSCREEN, R.string.enable_in_fullscreen)
+														toggle(PreferenceKeys.GESTURE_LONG_PRESS_WINDOWED, R.string.enable_in_windowed),
+														toggle(PreferenceKeys.GESTURE_LONG_PRESS_FULLSCREEN, R.string.enable_in_fullscreen)
 										)),
 										page(R.string.brightness, 0, 0, List.of(
-														toggle(Constant.GESTURE_BRIGHTNESS_WINDOWED, R.string.enable_in_windowed),
-														toggle(Constant.GESTURE_BRIGHTNESS_FULLSCREEN, R.string.enable_in_fullscreen)
+														toggle(PreferenceKeys.GESTURE_BRIGHTNESS_WINDOWED, R.string.enable_in_windowed),
+														toggle(PreferenceKeys.GESTURE_BRIGHTNESS_FULLSCREEN, R.string.enable_in_fullscreen)
 										)),
 										page(R.string.volume, 0, 0, List.of(
-														toggle(Constant.GESTURE_VOLUME_WINDOWED, R.string.enable_in_windowed),
-														toggle(Constant.GESTURE_VOLUME_FULLSCREEN, R.string.enable_in_fullscreen)
+														toggle(PreferenceKeys.GESTURE_VOLUME_WINDOWED, R.string.enable_in_windowed),
+														toggle(PreferenceKeys.GESTURE_VOLUME_FULLSCREEN, R.string.enable_in_fullscreen)
 										)),
 										page(R.string.gesture_seek, 0, 0, List.of(
-														toggle(Constant.GESTURE_SEEK_WINDOWED, R.string.enable_in_windowed),
-														toggle(Constant.GESTURE_SEEK_FULLSCREEN, R.string.enable_in_fullscreen)
+														toggle(PreferenceKeys.GESTURE_SEEK_WINDOWED, R.string.enable_in_windowed),
+														toggle(PreferenceKeys.GESTURE_SEEK_FULLSCREEN, R.string.enable_in_fullscreen)
 										)),
 										page(R.string.gesture_fullscreen_swipe, 0, 0, List.of(
-														toggle(Constant.GESTURE_FULLSCREEN_WINDOWED, R.string.enable_in_windowed),
-														toggle(Constant.GESTURE_FULLSCREEN_FULLSCREEN, R.string.enable_in_fullscreen)
+														toggle(PreferenceKeys.GESTURE_FULLSCREEN_WINDOWED, R.string.enable_in_windowed),
+														toggle(PreferenceKeys.GESTURE_FULLSCREEN_FULLSCREEN, R.string.enable_in_fullscreen)
 										))
 						)),
 						page(R.string.background_mini_player, R.string.background_mini_player_summary, R.drawable.ic_pip, List.of(

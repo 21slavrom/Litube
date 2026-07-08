@@ -1,5 +1,6 @@
 package com.hhst.youtubelite.browser;
 
+import android.util.Log;
 import android.webkit.CookieManager;
 
 import androidx.annotation.NonNull;
@@ -22,6 +23,8 @@ import okhttp3.Response;
  * Coordinator that serializes cookie access between WebView and extractor.
  */
 final class CookieAccessCoordinator {
+
+	private static final String TAG = "CookieAccessCoord";
 
 	@NonNull
 	private final Backend backend;
@@ -86,6 +89,15 @@ final class CookieAccessCoordinator {
 		scheduler.schedule(flushDelayMillis, backend::flush);
 	}
 
+	/**
+	 * Releases the scheduled executor backing cookie flush operations. Call
+	 * when the owning WebView is destroyed to prevent thread accumulation
+	 * across browser session recreations.
+	 */
+	void release() {
+		scheduler.shutdown();
+	}
+
 	@NonNull
 	private String normalizeCacheKey(@NonNull String url) {
 		try {
@@ -95,14 +107,12 @@ final class CookieAccessCoordinator {
 			if (scheme == null || authority == null) return url;
 			String path = uri.getRawPath() == null || uri.getRawPath().isEmpty() ? "/" : uri.getRawPath();
 			return scheme + "://" + authority + path;
-		} catch (RuntimeException ignored) {
+		} catch (RuntimeException e) {
+			Log.d(TAG, "normalizeCacheKey: malformed URL, returning raw url", e);
 			return url;
 		}
 	}
 
-/**
- * Contract for app logic.
- */
 	interface Backend {
 		@Nullable
 		String getCookie(@NonNull String url);
@@ -112,19 +122,20 @@ final class CookieAccessCoordinator {
 		void flush();
 	}
 
-/**
- * Contract for app logic.
- */
-	interface Scheduler {
+	private interface Scheduler {
 		void schedule(long delayMillis, @NonNull Runnable task);
+
+		/**
+		 * Shuts down the backing executor, cancelling pending scheduled tasks.
+		 * Called from {@link CookieAccessCoordinator#release()} when the owning
+		 * WebView is destroyed.
+		 */
+		void shutdown();
 	}
 
 	private record CacheEntry(@Nullable String value, long createdAtMillis) {
 	}
 
-/**
- * Value object for app logic.
- */
 	private record CookieManagerBackend(@NonNull CookieManager cookieManager) implements Backend {
 		private CookieManagerBackend {
 			Objects.requireNonNull(cookieManager);
@@ -147,9 +158,6 @@ final class CookieAccessCoordinator {
 		}
 	}
 
-/**
- * Value object for app logic.
- */
 	private record ExecutorScheduler(
 					@NonNull ScheduledExecutorService executor) implements Scheduler {
 		private ExecutorScheduler {
@@ -159,6 +167,11 @@ final class CookieAccessCoordinator {
 		@Override
 		public void schedule(long delayMillis, @NonNull Runnable task) {
 			executor.schedule(task, Math.max(0L, delayMillis), TimeUnit.MILLISECONDS);
+		}
+
+		@Override
+		public void shutdown() {
+			executor.shutdownNow();
 		}
 	}
 }

@@ -1,5 +1,6 @@
 package com.hhst.youtubelite.ui.queue;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,6 +23,7 @@ import java.util.List;
  * Adapter that binds queue items into the bottom sheet list.
  */
 public final class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.ViewHolder> {
+	private static final String TAG = "QueueAdapter";
 	@NonNull
 	private final List<QueueItem> items = new ArrayList<>();
 	@NonNull
@@ -82,23 +84,18 @@ public final class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.ViewHo
 	private void notifySafe(@NonNull Runnable task) {
 		try {
 			task.run();
-		} catch (NullPointerException ignored) {
+		} catch (NullPointerException e) {
+			Log.d(TAG, "notifySafe: observer list unavailable", e);
 			// The JVM unit-test stub for RecyclerView.Adapter has no observer list until attached.
 		}
 	}
 
-/**
- * Contract for app logic.
- */
 	public interface Actions {
 		void onPlayRequested(@NonNull QueueItem item);
 
 		void onDeleteRequested(@NonNull QueueItem item);
 	}
 
-/**
- * Component that handles app logic.
- */
 	static final class ViewHolder extends RecyclerView.ViewHolder {
 		@NonNull
 		private final ImageView thumbnailView;

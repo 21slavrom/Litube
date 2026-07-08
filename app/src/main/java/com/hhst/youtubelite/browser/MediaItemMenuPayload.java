@@ -65,9 +65,6 @@ public record MediaItemMenuPayload(@NonNull String videoId, @NonNull String vide
 		return new QueueItem(videoId, videoUrl, title, author, thumbnailUrl);
 	}
 
-/**
- * Component that handles app logic.
- */
 	private static final class RawPayload {
 		@SerializedName("videoId")
 		String videoId;

@@ -27,7 +27,7 @@ import androidx.annotation.Nullable;
 import androidx.media3.common.util.Consumer;
 import androidx.media3.common.util.UnstableApi;
 
-import com.hhst.youtubelite.Constant;
+import com.hhst.youtubelite.AppConstants;
 import com.hhst.youtubelite.R;
 import com.hhst.youtubelite.cache.WebViewCachePolicy;
 import com.hhst.youtubelite.extension.ExtensionManager;
@@ -68,6 +68,7 @@ import okhttp3.Response;
 @UnstableApi
 public class YoutubeWebview extends WebView {
 
+	private static final String TAG = "YoutubeWebview";
 	private static final String PO_TOKEN_CONTEXT_SCRIPT = """
 					(function(){
 					try{
@@ -79,7 +80,7 @@ public class YoutubeWebview extends WebView {
 					var value=ytcfgObject.get(key);
 					if(value!==undefined&&value!==null&&value!==''){return value;}
 					}
-					}catch(ignored){}
+					}catch(e){}
 					return ytcfgData&&ytcfgData[key]!==undefined?ytcfgData[key]:null;
 					};
 					var initialDataContext=globalThis.ytInitialData&&globalThis.ytInitialData.responseContext?globalThis.ytInitialData.responseContext:null;
@@ -91,7 +92,7 @@ public class YoutubeWebview extends WebView {
 					var serializedExperimentFlags=null;
 					if(typeof rawFlags==='string'){serializedExperimentFlags=rawFlags;}
 					else if(rawFlags&&typeof rawFlags==='object'){
-					try{serializedExperimentFlags=Object.keys(rawFlags).map(function(key){return key+'='+rawFlags[key];}).join(',');}catch(ignored){}
+					try{serializedExperimentFlags=Object.keys(rawFlags).map(function(key){return key+'='+rawFlags[key];}).join(',');}catch(e){}
 					}
 					var premium=false;
 					try{
@@ -100,7 +101,7 @@ public class YoutubeWebview extends WebView {
 					var iconType=logo&&logo.iconImage?logo.iconImage.iconType:null;
 					var tooltip=logo&&typeof logo.tooltipText==='string'?logo.tooltipText.toLowerCase():null;
 					premium=!!(getCfg('IS_SUBSCRIBED_TO_PREMIUM')||getCfg('IS_PREMIUM_USER')||iconType==='YOUTUBE_PREMIUM_LOGO'||(tooltip&&tooltip.indexOf('premium')>=0));
-					}catch(ignored){}
+					}catch(e){}
 					return JSON.stringify({
 					url:location.href,
 					visitorData:getCfg('VISITOR_DATA')||(client?client.visitorData:null),
@@ -155,6 +156,11 @@ public class YoutubeWebview extends WebView {
 		super(context, attrs, defStyleAttr);
 	}
 
+	@Override
+	public boolean performClick() {
+		return super.performClick();
+	}
+
 	static boolean canLoad(@NonNull String url) {
 		if (UrlUtils.externalUri(url) != null) return false;
 		if (UrlUtils.isAllowedUrl(url)) return true;
@@ -173,7 +179,8 @@ public class YoutubeWebview extends WebView {
 	private static String scheme(@NonNull String url) {
 		try {
 			return URI.create(url).getScheme();
-		} catch (IllegalArgumentException ignored) {
+		} catch (IllegalArgumentException e) {
+			Log.d(TAG, "scheme: malformed URL", e);
 			return null;
 		}
 	}
@@ -184,7 +191,7 @@ public class YoutubeWebview extends WebView {
 
 	@NonNull
 	static String sanitizeLoadUrl(@NonNull String url, boolean queueEnabled) {
-		if (!queueEnabled || !Constant.PAGE_WATCH.equals(UrlUtils.getPageClass(url))) {
+		if (!queueEnabled || !AppConstants.PAGE_WATCH.equals(UrlUtils.getPageClass(url))) {
 			return url;
 		}
 		try {
@@ -210,13 +217,22 @@ public class YoutubeWebview extends WebView {
 				return url;
 			}
 			return new URI(uri.getScheme(), uri.getRawAuthority(), uri.getRawPath(), filteredQuery.length() > 0 ? filteredQuery.toString() : null, uri.getRawFragment()).toString();
-		} catch (Exception ignored) {
+		} catch (Exception e) {
+			Log.d(TAG, "sanitizeLoadUrl: failed to sanitize URL", e);
 			return url;
 		}
 	}
 
 	public void setOkHttpClient(@NonNull OkHttpClient okHttpClient, @NonNull WebViewCachePolicy webViewCachePolicy) {
 		okHttpWebViewInterceptor = new OkHttpWebViewInterceptor(okHttpClient, webViewCachePolicy);
+	}
+
+	@Override
+	public void destroy() {
+		if (okHttpWebViewInterceptor != null) {
+			okHttpWebViewInterceptor.release();
+		}
+		super.destroy();
 	}
 
 	public void setUpdateVisitedHistory(@Nullable Consumer<String> updateVisitedHistory) {
@@ -295,7 +311,7 @@ public class YoutubeWebview extends WebView {
 		return sanitizeLoadUrl(url, queueRepository != null && queueRepository.isEnabled());
 	}
 
-	@SuppressLint({"SetJavaScriptEnabled", "ClickableViewAccessibility"})
+	@SuppressLint("SetJavaScriptEnabled")
 	public void init() {
 		initialized = true;
 		setFocusable(true);
@@ -305,6 +321,8 @@ public class YoutubeWebview extends WebView {
 		CookieManager.getInstance().setAcceptCookie(true);
 
 		WebSettings settings = getSettings();
+		// JavaScript is required to drive YouTube's mobile web app and to expose
+		// the injected JavascriptInterface that the player and queue rely on.
 		settings.setJavaScriptEnabled(true);
 		settings.setDatabaseEnabled(true);
 		settings.setDomStorageEnabled(true);
@@ -427,7 +445,8 @@ public class YoutubeWebview extends WebView {
 						Enumeration<InputStream> streams = Collections.enumeration(Arrays.asList(injectedStream, sourceStream));
 						SequenceInputStream sequenceInputStream = new SequenceInputStream(streams);
 						return okHttpWebViewInterceptor.toWebResourceResponse(url, okHttpResponse, sequenceInputStream);
-					} catch (Exception ignored) {
+					} catch (Exception e) {
+						Log.w(TAG, "shouldInterceptRequest: failed to intercept live chat", e);
 						if (okHttpResponse != null) okHttpResponse.close();
 					}
 				}

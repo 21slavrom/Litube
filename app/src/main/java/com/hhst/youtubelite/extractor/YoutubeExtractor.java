@@ -1,5 +1,7 @@
 package com.hhst.youtubelite.extractor;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -57,6 +59,8 @@ interface Fetch {
  */
 @Singleton
 public final class YoutubeExtractor {
+	private static final String TAG = "YoutubeExtractor";
+
 	@NonNull
 	private final Fetch play;
 	@NonNull
@@ -79,7 +83,8 @@ public final class YoutubeExtractor {
 	                        @NonNull SessionClientProfileProvider profiles,
 	                        @NonNull InfoCache cache,
 	                        @NonNull Executor executor,
-	                        @NonNull Gson gson) {
+	                        @NonNull Gson gson,
+	                        @NonNull com.hhst.youtubelite.player.common.PlayerPreferences prefs) {
 		this(
 						(videoId, session) -> downloader.withExtractionSession(
 										() -> extract(
@@ -98,6 +103,19 @@ public final class YoutubeExtractor {
 		NewPipe.init(downloader);
 		YoutubeStreamExtractor.setPoTokenProvider(litePoTokenProvider);
 		YoutubeStreamExtractor.setClientProfileProvider(profiles);
+		// Prefer the client that last succeeded so extraction avoids clients prone to 403.
+		YoutubeStreamExtractor.setClientOrderer(defaultOrder -> {
+			String last = prefs.getLastSuccessClient();
+			if (last == null || last.isBlank() || !defaultOrder.contains(last)) {
+				return null;
+			}
+			java.util.List<String> reordered = new java.util.ArrayList<>();
+			reordered.add(last);
+			for (String c : defaultOrder) {
+				if (!c.equals(last)) reordered.add(c);
+			}
+			return reordered;
+		});
 	}
 
 	YoutubeExtractor(@NonNull Fetch play,
@@ -161,10 +179,21 @@ public final class YoutubeExtractor {
 					throws org.schabi.newpipe.extractor.exceptions.ExtractionException, IOException {
 		var extractor = ServiceList.YouTube.getStreamExtractor(url);
 		YoutubeStreamExtractor youtube = extractor instanceof YoutubeStreamExtractor y ? y : null;
+
 		StreamInfo info = streams
 						? StreamInfo.getStream(extractor)
 						: StreamInfo.getInfo(extractor);
 		return new ExtractedInfo(info, youtube);
+	}
+
+	/**
+	 * Returns the cached {@link PlaybackDetails} for {@code videoId}, or {@code null} if not
+	 * cached or expired. Used for lightweight refreshes (e.g. picking up chapter segments that
+	 * arrived via the delayed {@code /next} response) without triggering a full extraction.
+	 */
+	@Nullable
+	public PlaybackDetails getCachedPlaybackDetails(@NonNull String videoId) {
+		return cache.getPlaybackDetails(videoId);
 	}
 
 	@NonNull
@@ -187,6 +216,18 @@ public final class YoutubeExtractor {
 		return task.attach(session);
 	}
 
+	/**
+	 * Invalidates cached playback details and any in-flight extraction task for the given video,
+	 * so the next {@link #getInfo(String, ExtractionSession)} call fetches a fresh source.
+	 */
+	public void invalidate(@NonNull String videoId) {
+		cache.invalidatePlaybackDetails(videoId);
+		Task task = tasks.remove(videoId);
+		if (task != null) {
+			task.cancelRoot();
+		}
+	}
+
 	@NonNull
 	private PlaybackDetails load(@NonNull String videoId,
 	                             @NonNull ExtractionSession session)
@@ -200,65 +241,113 @@ public final class YoutubeExtractor {
 			return copy(cached, PlaybackDetails.class);
 		}
 
+		// Fast path: a previous /next call left VideoDetails in the cache. Fetch
+		// streams-only extraction and merge with the cached metadata, avoiding
+		// a second full /next round-trip. Falls back to full extraction on any
+		// failure that is not a cancellation.
 		VideoDetails longVideo = cache.getVideoDetails(videoId);
 		if (longVideo != null) {
 			try {
 				ExtractedInfo extracted = play.fetch(videoId, session);
-				StreamInfo streamInfo = extracted.info();
 				ensureNotCancelled(session);
-				StreamCatalog catalog = buildCatalog(streamInfo, extracted.youtube());
-				DeliveryCatalog deliveries = buildDeliveries(catalog);
-				PlaybackPlan plan = PlaybackPlanner.plan(deliveries);
-				PlaybackDetails details = new PlaybackDetails(
-								mergeVideo(longVideo, streamInfo),
-								catalog,
-								deliveries,
-								plan,
-								copyList(orEmpty(streamInfo.getStreamSegments())),
-								copyList(orEmpty(streamInfo.getSubtitles())));
-				ensurePlayableSources(videoId, details.deliveries(), details.plan());
-				cache.putPlaybackDetails(videoId, details);
-				cache.putVideoDetails(videoId, details.video());
-				return copy(details, PlaybackDetails.class);
+				return assemblePlaybackDetails(videoId, extracted,
+						mergeVideo(longVideo, extracted.info()));
 			} catch (IOException | org.schabi.newpipe.extractor.exceptions.ExtractionException e) {
 				ensureNotCancelled(session);
 			}
 		}
 
 		ExtractedInfo extracted = info.fetch(videoId, session);
-		StreamInfo streamInfo = extracted.info();
 		ensureNotCancelled(session);
-		Description description = streamInfo.getDescription();
-		Date uploadDate = streamInfo.getUploadDate() == null
-						? null
-						: Date.from(streamInfo.getUploadDate().getInstant());
-		String thumbnailUrl = getBestImageUrl(streamInfo.getThumbnails());
+		return assemblePlaybackDetails(videoId, extracted,
+				buildVideoDetails(extracted.info()));
+	}
+
+	/**
+	 * Builds the full {@link PlaybackDetails} from extracted stream info and a
+	 * pre-constructed {@link VideoDetails}, then caches it and schedules a
+	 * segment refresh. Shared by the fast (merged) and full (fresh) extraction
+	 * paths so the catalog/delivery/plan assembly logic lives in one place.
+	 */
+	@NonNull
+	private PlaybackDetails assemblePlaybackDetails(@NonNull String videoId,
+	                                                @NonNull ExtractedInfo extracted,
+	                                                @NonNull VideoDetails video)
+					throws org.schabi.newpipe.extractor.exceptions.ExtractionException {
+		StreamInfo streamInfo = extracted.info();
 		StreamCatalog catalog = buildCatalog(streamInfo, extracted.youtube());
 		DeliveryCatalog deliveries = buildDeliveries(catalog);
 		PlaybackPlan plan = PlaybackPlanner.plan(deliveries);
 		PlaybackDetails details = new PlaybackDetails(
-						new VideoDetails(
-										streamInfo.getId(),
-										streamInfo.getName(),
-										streamInfo.getUploaderName(),
-										description == null ? null : description.getContent(),
-										Math.max(0L, streamInfo.getDuration()),
-										thumbnailUrl != null ? thumbnailUrl : buildDefaultThumbnailUrl(streamInfo.getId()),
-										streamInfo.getLikeCount(),
-										streamInfo.getDislikeCount(),
-										uploadDate,
-										streamInfo.getUploaderUrl(),
-										getBestImageUrl(streamInfo.getUploaderAvatars()),
-										streamInfo.getViewCount()),
-						catalog,
-						deliveries,
-						plan,
-						copyList(orEmpty(streamInfo.getStreamSegments())),
-						copyList(orEmpty(streamInfo.getSubtitles())));
+				video,
+				catalog,
+				deliveries,
+				plan,
+				copyList(orEmpty(streamInfo.getStreamSegments())),
+				copyList(orEmpty(streamInfo.getSubtitles())));
 		ensurePlayableSources(videoId, details.deliveries(), details.plan());
 		cache.putPlaybackDetails(videoId, details);
 		cache.putVideoDetails(videoId, details.video());
+
+		// The /next response (which provides stream segments/chapters) is fetched in the
+		// background by YoutubeStreamExtractor.onFetchPage and may not have arrived yet.
+		// Schedule a delayed refresh: if the extractor's segments become non-empty, rebuild
+		// and re-cache PlaybackDetails so the next getInfo() hit includes chapter markers.
+		scheduleSegmentRefresh(videoId, extracted.youtube(), details);
 		return copy(details, PlaybackDetails.class);
+	}
+
+	/**
+	 * Builds a fresh {@link VideoDetails} from a fully extracted {@link StreamInfo}.
+	 * Used on the full extraction path where no cached metadata is available.
+	 */
+	@NonNull
+	private VideoDetails buildVideoDetails(@NonNull StreamInfo streamInfo) {
+		Description description = streamInfo.getDescription();
+		Date uploadDate = streamInfo.getUploadDate() == null
+				? null
+				: Date.from(streamInfo.getUploadDate().getInstant());
+		String thumbnailUrl = getBestImageUrl(streamInfo.getThumbnails());
+		return new VideoDetails(
+				streamInfo.getId(),
+				streamInfo.getName(),
+				streamInfo.getUploaderName(),
+				description == null ? null : description.getContent(),
+				Math.max(0L, streamInfo.getDuration()),
+				thumbnailUrl != null ? thumbnailUrl : buildDefaultThumbnailUrl(streamInfo.getId()),
+				streamInfo.getLikeCount(),
+				streamInfo.getDislikeCount(),
+				uploadDate,
+				streamInfo.getUploaderUrl(),
+				getBestImageUrl(streamInfo.getUploaderAvatars()),
+				streamInfo.getViewCount());
+	}
+
+	/**
+	 * Polls the extractor for stream segments that arrive via the delayed {@code /next}
+	 * background response. When segments become available, rebuilds and re-caches
+	 * {@link PlaybackDetails} so subsequent {@link #getInfo} calls include chapter markers.
+	 *
+	 * <p>Delegates the polling loop to {@link SegmentPoll} so the 300ms wait between
+	 * attempts is a non-blocking coroutine delay instead of a blocking
+	 * {@link Thread#sleep} on the executor pool.
+	 */
+	private void scheduleSegmentRefresh(@NonNull String videoId,
+	                                    @Nullable YoutubeStreamExtractor youtube,
+	                                    @NonNull PlaybackDetails base) {
+		if (youtube == null) {
+			return;
+		}
+		SegmentPoll.pollUntilNonEmpty(
+				youtube::getStreamSegments,
+				300L,
+				10_000L,
+				segs -> {
+					PlaybackDetails refreshed = new PlaybackDetails(
+							base.video(), base.catalog(), base.deliveries(), base.plan(),
+							copyList(segs), base.subtitles());
+					cache.putPlaybackDetails(videoId, refreshed);
+				});
 	}
 
 	@NonNull
@@ -671,7 +760,8 @@ public final class YoutubeExtractor {
 			return host != null
 							&& !host.isEmpty()
 							&& ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme));
-		} catch (IllegalArgumentException ignored) {
+		} catch (IllegalArgumentException e) {
+			Log.d(TAG, "isPlayableUrl: malformed URL: " + e.getMessage());
 			return false;
 		}
 	}
@@ -683,7 +773,8 @@ public final class YoutubeExtractor {
 	@NonNull
 	private <T> T copy(@NonNull T value,
 	                   @NonNull Class<T> type) {
-		T copy = gson.fromJson(gson.toJson(value), type);
+		String json = gson.toJson(value);
+		T copy = gson.fromJson(json, type);
 		return copy != null ? copy : value;
 	}
 
@@ -711,7 +802,9 @@ public final class YoutubeExtractor {
 					throw new CompletionException(e);
 				}
 			}, executor);
-			base.whenComplete((ignored, error) -> tasks.remove(videoId, this));
+			base.whenComplete((ignored, error) -> {
+				tasks.remove(videoId, this);
+			});
 		}
 
 		@NonNull
@@ -730,7 +823,10 @@ public final class YoutubeExtractor {
 			}
 			base.whenComplete((value, error) -> {
 				if (error == null) {
-					future.complete(copy(value, PlaybackDetails.class));
+					// PlaybackDetails and its components are not mutated by callers (Engine and
+					// recovery paths build new PlaybackPlan/PlaybackDetails rather than mutating),
+					// so the cached value can be shared directly without a Gson round-trip copy.
+					future.complete(value);
 					return;
 				}
 				Throwable cause = error;
@@ -749,6 +845,15 @@ public final class YoutubeExtractor {
 			if (refs.decrementAndGet() == 0 && !base.isDone()) {
 				root.cancel();
 			}
+		}
+
+		/**
+		 * Cancels the root session so that any in-flight {@link #load} for this task stops
+		 * promptly. Used by {@link #invalidate(String)} to avoid orphaned extractions
+		 * continuing after the cache entry has been cleared.
+		 */
+		private void cancelRoot() {
+			root.cancel();
 		}
 	}
 }

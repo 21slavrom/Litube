@@ -11,7 +11,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
-import android.os.SystemClock;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.TextView;
@@ -38,11 +38,12 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.switchmaterial.SwitchMaterial;
-import com.hhst.youtubelite.Constant;
+import com.hhst.youtubelite.AppConstants;
 import com.hhst.youtubelite.PlaybackService;
 import com.hhst.youtubelite.R;
 import com.hhst.youtubelite.browser.TabManager;
 import com.hhst.youtubelite.browser.YoutubeWebview;
+import com.hhst.youtubelite.core.AppScope;
 import com.hhst.youtubelite.downloader.ui.DownloadActivity;
 import com.hhst.youtubelite.downloader.ui.DownloadDialog;
 import com.hhst.youtubelite.downloader.ui.DownloadPermissionHost;
@@ -50,7 +51,9 @@ import com.hhst.youtubelite.downloader.ui.PlaylistDownloadDialog;
 import com.hhst.youtubelite.downloader.ui.PlaylistDownloadItem;
 import com.hhst.youtubelite.extension.ExtensionManager;
 import com.hhst.youtubelite.extractor.YoutubeExtractor;
-import com.hhst.youtubelite.extractor.potoken.PoTokenHost;
+
+import org.schabi.newpipe.extractor.services.youtube.YoutubeJavaScriptPlayerManager;
+import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper;
 import com.hhst.youtubelite.player.LitePlayer;
 import com.hhst.youtubelite.player.common.PlayerLoopMode;
 import com.hhst.youtubelite.player.queue.QueueItem;
@@ -77,6 +80,7 @@ import dagger.hilt.android.AndroidEntryPoint;
 @AndroidEntryPoint
 @UnstableApi
 public final class MainActivity extends AppCompatActivity implements LifecycleEventObserver, DownloadPermissionHost {
+	private static final String TAG = "MainActivity";
 	private static final String STATE_LAST_URL = "main.last_url";
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	@Inject
@@ -90,7 +94,9 @@ public final class MainActivity extends AppCompatActivity implements LifecycleEv
 	@Inject
 	QueueRepository queueRepository;
 	@Inject
-	PoTokenHost poTokenHost;
+	com.hhst.youtubelite.extractor.potoken.PoTokenCoordinator poTokenCoordinator;
+	@Inject
+	okhttp3.OkHttpClient okHttpClient;
 	@Nullable
 	private PlaybackService playbackService;
 	@Nullable
@@ -117,7 +123,7 @@ public final class MainActivity extends AppCompatActivity implements LifecycleEv
 	                                           final boolean isInPictureInPictureMode) {
 		return !isInPictureInPictureMode
 						&& extensionManager != null
-						&& extensionManager.isEnabled(Constant.ENABLE_PIP)
+						&& extensionManager.isEnabled(AppConstants.ENABLE_PIP)
 						&& player != null
 						&& player.shouldAutoEnterPictureInPicture();
 	}
@@ -151,6 +157,10 @@ public final class MainActivity extends AppCompatActivity implements LifecycleEv
 		playerRoot.post(() -> {
 			findViewById(R.id.btn_queue).setOnClickListener(v -> showQueueBottomSheet());
 			findViewById(R.id.btn_mini_queue).setOnClickListener(v -> showQueueBottomSheet());
+			// Init Cast framework early for device discovery (used in more-options sheet).
+			if (player != null) {
+				player.initializeCast();
+			}
 		});
 		if (PermissionUtils.needsPostNotificationsPermission()
 						&& !PermissionUtils.hasPostNotificationsPermission(this)) {
@@ -183,8 +193,35 @@ public final class MainActivity extends AppCompatActivity implements LifecycleEv
 		};
 		getOnBackPressedDispatcher().addCallback(this, appBackCallback);
 
-		// Initialize potoken dependency and open home page.
-		long startupDeadlineMs = SystemClock.uptimeMillis() + 4_000L;
+		// Prewarm PoToken WebView + BotGuard in background; extraction no longer blocks on it.
+		poTokenCoordinator.prewarmSession();
+
+		// Warm visitorData cache to avoid ~500ms DNS+TLS penalty on first extraction.
+		AppScope.launchIO(YoutubeParsingHelper::warmUpVisitorDataCache);
+
+		// Pre-connect to InnerTube hosts (~200-300ms saved per host on first extraction).
+		AppScope.launchIO(() -> {
+			for (String host : new String[]{"https://www.youtube.com", "https://youtubei.googleapis.com"}) {
+				try {
+					okHttpClient.newCall(
+									new okhttp3.Request.Builder().url(host).head().build())
+							.execute().close();
+				} catch (Exception e) {
+					Log.w(TAG, "onCreate: TLS warm-up request failed", e);
+					// Best-effort warm-up; failures are silently ignored.
+				}
+			}
+		});
+
+		// Warm JS player cache (~200-350ms saved on first extraction).
+		AppScope.launchIO(() -> {
+			try {
+				YoutubeJavaScriptPlayerManager.getSignatureTimestamp("");
+			} catch (Exception e) {
+				Log.w(TAG, "onCreate: STS warm-up failed", e);
+				// Best-effort warm-up; the extractor will retry on demand.
+			}
+		});
 
 		mainView.post(new Runnable() {
 			@Override
@@ -193,17 +230,12 @@ public final class MainActivity extends AppCompatActivity implements LifecycleEv
 					handleIntent(getIntent());
 					return;
 				}
-				poTokenHost.prewarm();
 				if (tabManager.getWebView() == null) {
 					String initialUrl = restoredUrl;
 					if (initialUrl == null || initialUrl.isBlank()) {
-						initialUrl = Constant.HOME_URL;
+						initialUrl = AppConstants.HOME_URL;
 					}
 					tabManager.openTab(initialUrl, UrlUtils.getPageClass(initialUrl));
-				}
-				if (!poTokenHost.isReady() && SystemClock.uptimeMillis() < startupDeadlineMs) {
-					handler.postDelayed(this, 100L);
-					return;
 				}
 				bootstrapped = true;
 				handleIntent(getIntent());
@@ -241,7 +273,7 @@ public final class MainActivity extends AppCompatActivity implements LifecycleEv
 		if (event != Lifecycle.Event.ON_STOP
 						|| player == null
 						|| DeviceUtils.isInPictureInPictureMode(this)
-						|| extensionManager.isEnabled(Constant.ENABLE_BACKGROUND_PLAY)) {
+						|| extensionManager.isEnabled(AppConstants.ENABLE_BACKGROUND_PLAY)) {
 			return;
 		}
 		player.suspendBackgroundPlayback();
@@ -278,18 +310,18 @@ public final class MainActivity extends AppCompatActivity implements LifecycleEv
 
 		if (url != null) {
 			if (isDownloadAction) {
-				String loadUrl = url.replace(Constant.YOUTUBE_MOBILE_HOST, "www.youtube.com");
+				String loadUrl = url.replace(AppConstants.YOUTUBE_MOBILE_HOST, "www.youtube.com");
 				long fetchToast = ToastUtils.show(this, "Fetching download links...");
 				handler.postDelayed(() -> ToastUtils.cancel(fetchToast), 1000);
 				handler.postDelayed(() -> new DownloadDialog(loadUrl, this, youtubeExtractor).show(), 600);
 			} else {
-				String loadUrl = url.replace("www.youtube.com", Constant.YOUTUBE_MOBILE_HOST);
+				String loadUrl = url.replace("www.youtube.com", AppConstants.YOUTUBE_MOBILE_HOST);
 				if (tabManager != null) {
 					tabManager.openTab(loadUrl, UrlUtils.getPageClass(loadUrl));
 				}
 			}
 		} else if (tabManager.getWebView() == null) {
-			tabManager.openTab(Constant.HOME_URL, UrlUtils.getPageClass(Constant.HOME_URL));
+			tabManager.openTab(AppConstants.HOME_URL, UrlUtils.getPageClass(AppConstants.HOME_URL));
 		}
 	}
 
@@ -645,7 +677,10 @@ public final class MainActivity extends AppCompatActivity implements LifecycleEv
 		super.onDestroy();
 		ProcessLifecycleOwner.get().getLifecycle().removeObserver(this);
 		if (serviceConnection != null) unbindService(serviceConnection);
-		if (!isChangingConfigurations() && player != null) player.release();
+		if (!isChangingConfigurations() && player != null) {
+			player.releaseCast();
+			player.release();
+		}
 	}
 
 	@Override

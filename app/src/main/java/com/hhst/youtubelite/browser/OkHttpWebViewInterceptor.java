@@ -1,5 +1,6 @@
 package com.hhst.youtubelite.browser;
 
+import android.util.Log;
 import android.webkit.CookieManager;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -44,6 +45,7 @@ import okio.Sink;
 @UnstableApi
 public final class OkHttpWebViewInterceptor {
 
+	private static final String TAG = "OkHttpInterceptor";
 	@NonNull
 	private final OkHttpClient client;
 	@NonNull
@@ -57,6 +59,14 @@ public final class OkHttpWebViewInterceptor {
 		this.cachePolicy = cachePolicy;
 		this.client = createResourceClient(client, cachePolicy);
 		this.cookieAccessCoordinator = CookieAccessCoordinator.create(CookieManager.getInstance());
+	}
+
+	/**
+	 * Releases the cookie flush executor. Call from the owning WebView's
+	 * {@code destroy()} to prevent thread accumulation across session recreations.
+	 */
+	public void release() {
+		cookieAccessCoordinator.release();
 	}
 
 	@NonNull
@@ -87,7 +97,8 @@ public final class OkHttpWebViewInterceptor {
 		final String scheme;
 		try {
 			scheme = url == null ? null : URI.create(url).getScheme();
-		} catch (IllegalArgumentException ignored) {
+		} catch (IllegalArgumentException e) {
+			Log.d(TAG, "isInterceptableWebRequest: malformed URL", e);
 			return false;
 		}
 		return "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme);
@@ -251,7 +262,8 @@ public final class OkHttpWebViewInterceptor {
 				try (response) {
 					cookieAccessCoordinator.syncCookies(response);
 					drainBody(response.body());
-				} catch (IOException ignored) {
+				} catch (IOException e) {
+					Log.w(TAG, "onResponse: failed to drain refresh response body", e);
 				} finally {
 					refreshingUrls.remove(url);
 				}
@@ -270,7 +282,8 @@ public final class OkHttpWebViewInterceptor {
 		if (response == null) return;
 		try {
 			response.close();
-		} catch (Exception ignored) {
+		} catch (Exception e) {
+			Log.d(TAG, "closeQuietly: failed to close response", e);
 		}
 	}
 

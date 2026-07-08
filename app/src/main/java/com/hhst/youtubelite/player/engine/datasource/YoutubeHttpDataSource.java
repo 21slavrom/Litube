@@ -416,9 +416,6 @@ public final class YoutubeHttpDataSource extends BaseDataSource implements HttpD
 		}
 	}
 
-/**
- * Component that handles app logic.
- */
 	public static final class Factory implements HttpDataSource.Factory {
 
 		private final RequestProperties defaultRequestProperties;

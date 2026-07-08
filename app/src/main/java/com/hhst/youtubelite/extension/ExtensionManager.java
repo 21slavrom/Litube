@@ -25,7 +25,7 @@ public class ExtensionManager {
 
 	private void initializeDefaultPreferences() {
 		initializeGesturePreferences();
-		for (Map.Entry<String, Boolean> entry : Constant.DEFAULT_PREFERENCES.entrySet()) {
+		for (Map.Entry<String, Boolean> entry : PreferenceKeys.DEFAULT_PREFERENCES.entrySet()) {
 			String key = prefKey(entry.getKey());
 			if (!mmkv.contains(key)) {
 				mmkv.encode(key, entry.getValue());
@@ -34,17 +34,17 @@ public class ExtensionManager {
 	}
 
 	private void initializeGesturePreferences() {
-		for (String key : Constant.GESTURE_KEYS) {
+		for (String key : PreferenceKeys.GESTURE_KEYS) {
 			if (mmkv.contains(prefKey(key))) {
 				return;
 			}
 		}
 		boolean enabled = true;
-		String key = prefKey(Constant.ENABLE_PLAYER_GESTURES);
+		String key = prefKey(PreferenceKeys.ENABLE_PLAYER_GESTURES);
 		if (mmkv.contains(key)) {
 			enabled = mmkv.decodeBool(key, true);
 		}
-		for (String gesture : Constant.GESTURE_KEYS) {
+		for (String gesture : PreferenceKeys.GESTURE_KEYS) {
 			mmkv.encode(prefKey(gesture), enabled);
 		}
 	}
@@ -55,7 +55,7 @@ public class ExtensionManager {
 
 	public void setEnabled(String key, boolean enable) {
 		String pref = prefKey(key);
-		boolean changed = !mmkv.contains(pref) || mmkv.decodeBool(pref, Boolean.TRUE.equals(Constant.DEFAULT_PREFERENCES.getOrDefault(key, false))) != enable;
+		boolean changed = !mmkv.contains(pref) || mmkv.decodeBool(pref, Boolean.TRUE.equals(PreferenceKeys.DEFAULT_PREFERENCES.getOrDefault(key, false))) != enable;
 		mmkv.encode(pref, enable);
 		if (changed) {
 			bumpVersion();
@@ -63,12 +63,12 @@ public class ExtensionManager {
 	}
 
 	public boolean isEnabled(String key) {
-		return mmkv.decodeBool(prefKey(key), Boolean.TRUE.equals(Constant.DEFAULT_PREFERENCES.getOrDefault(key, false)));
+		return mmkv.decodeBool(prefKey(key), Boolean.TRUE.equals(PreferenceKeys.DEFAULT_PREFERENCES.getOrDefault(key, false)));
 	}
 
 	public void resetToDefault() {
 		boolean changed = false;
-		for (Map.Entry<String, Boolean> entry : Constant.DEFAULT_PREFERENCES.entrySet()) {
+		for (Map.Entry<String, Boolean> entry : PreferenceKeys.DEFAULT_PREFERENCES.entrySet()) {
 			String key = prefKey(entry.getKey());
 			boolean value = entry.getValue();
 			if (!mmkv.contains(key) || mmkv.decodeBool(key, value) != value) {
@@ -83,7 +83,7 @@ public class ExtensionManager {
 
 	public Map<String, Boolean> getAllPreferences() {
 		Map<String, Boolean> allPreferences = new HashMap<>();
-		for (String key : Constant.DEFAULT_PREFERENCES.keySet()) {
+		for (String key : PreferenceKeys.DEFAULT_PREFERENCES.keySet()) {
 			allPreferences.put(key, isEnabled(key));
 		}
 		return allPreferences;

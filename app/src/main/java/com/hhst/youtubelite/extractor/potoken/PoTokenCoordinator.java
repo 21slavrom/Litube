@@ -1,6 +1,7 @@
 package com.hhst.youtubelite.extractor.potoken;
 
 import android.os.Looper;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -41,6 +42,7 @@ import okhttp3.Response;
  */
 @Singleton
 public final class PoTokenCoordinator {
+	private static final String TAG = "PoTokenCoordinator";
 	private static final String REQUEST_KEY = "O43z0dpjhgX20SCx4KAo";
 	private static final String KEY_PREFIX = "potoken.";
 	private static final long INIT_TIMEOUT_MS = 4_000L;
@@ -80,8 +82,26 @@ public final class PoTokenCoordinator {
 		this.kv = kv;
 	}
 
+	/**
+	 * Prewarm the WebView host so the first mint is fast. Safe to call repeatedly.
+	 */
+	public void prewarmSession() {
+		poTokenHost.prewarm();
+	}
+
+	/**
+	 * Returns a cached WEB PoToken from MMKV only; never blocks on the WebView.
+	 */
 	@Nullable
-	public PoTokenResult getWebClientPoToken(@NonNull String videoId) {
+	public PoTokenResult getCachedWebPoToken(@NonNull String videoId) {
+		return load("web", videoId);
+	}
+
+	/**
+	 * Blocks on the WebView to mint a fresh WEB PoToken. Use only from a background thread.
+	 */
+	@Nullable
+	public PoTokenResult mintWebPoTokenBlocking(@NonNull String videoId) {
 		if (Looper.myLooper() == Looper.getMainLooper()) {
 			return null;
 		}
@@ -225,7 +245,8 @@ public final class PoTokenCoordinator {
 		try {
 			JsonArray array = JsonParser.parseString(generateItResponse).getAsJsonArray();
 			generateItResult = new GenerateItResult(array.get(0).getAsString(), array.get(1).getAsLong());
-		} catch (Exception ignored) {
+		} catch (Exception e) {
+			Log.w(TAG, "initializeSession: failed to parse GenerateIT response", e);
 			return null;
 		}
 		if (!setIntegrityToken(hostGeneration, generateItResult.integrityTokenBase64)) {
@@ -257,7 +278,8 @@ public final class PoTokenCoordinator {
 		}
 		try {
 			return fetchVisitorDataFromInnertube(YoutubeParsingHelper.getClientVersion());
-		} catch (Exception ignored) {
+		} catch (Exception e) {
+			Log.w(TAG, "fetchVisitorData: innertube fetch with default client version failed", e);
 			return null;
 		}
 	}
@@ -275,7 +297,8 @@ public final class PoTokenCoordinator {
 							YoutubeParsingHelper.YOUTUBEI_V1_URL,
 							null,
 							false);
-		} catch (Exception ignored) {
+		} catch (Exception e) {
+			Log.w(TAG, "fetchVisitorDataFromInnertube: web client visitor data fetch failed", e);
 			return null;
 		}
 	}
@@ -291,7 +314,8 @@ public final class PoTokenCoordinator {
 							YoutubeParsingHelper.YOUTUBEI_V1_URL,
 							null,
 							false);
-		} catch (Exception ignored) {
+		} catch (Exception e) {
+			Log.w(TAG, "fetchIosVisitorData: iOS visitor data fetch failed", e);
 			return null;
 		}
 	}

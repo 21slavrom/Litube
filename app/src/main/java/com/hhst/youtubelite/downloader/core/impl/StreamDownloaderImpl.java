@@ -1,5 +1,7 @@
 package com.hhst.youtubelite.downloader.core.impl;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -16,7 +18,10 @@ import java.util.BitSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -39,9 +44,19 @@ import okhttp3.Response;
  */
 @Singleton
 public class StreamDownloaderImpl implements StreamDownloader {
+	private static final String TAG = "StreamDownloader";
 	private final OkHttpClient client;
 	private final MMKV mmkv;
 	private final ThreadPoolExecutor executor;
+	/**
+	 * Runs download coordinators ({@link #runTask}). Distinct from
+	 * {@link #executor} because {@code runTask} blocks on
+	 * {@link CompletableFuture#join} waiting for chunk tasks submitted to
+	 * {@code executor}; sharing the same pool would deadlock once all worker
+	 * threads are occupied by coordinators with no thread left to run chunks.
+	 */
+	private final ExecutorService coordinatorExecutor =
+			Executors.newCachedThreadPool(StreamDownloaderImpl::namedDaemonThread);
 	private final Map<String, TaskContext> tasks = new ConcurrentHashMap<>();
 
 	@Inject
@@ -57,6 +72,12 @@ public class StreamDownloaderImpl implements StreamDownloader {
 		this.mmkv = mmkv;
 		this.executor = new ThreadPoolExecutor(8, 8, 60, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), r -> new Thread(r, "dl-node"));
 		this.executor.allowCoreThreadTimeOut(true);
+	}
+
+	private static Thread namedDaemonThread(Runnable r) {
+		Thread t = new Thread(r, "dl-coord");
+		t.setDaemon(true);
+		return t;
 	}
 
 	private static Dispatcher createDispatcher() {
@@ -83,7 +104,7 @@ public class StreamDownloaderImpl implements StreamDownloader {
 				prev = task.lastProgress.get();
 				if (progress <= prev) return;
 			} while (!task.lastProgress.compareAndSet(prev, progress));
-			task.callback.onProgress(progress);
+			task.callback.onProgress(progress, downloaded, totalLen);
 		}
 	}
 
@@ -102,81 +123,118 @@ public class StreamDownloaderImpl implements StreamDownloader {
 						new AtomicLong(),
 						new AtomicInteger(-1));
 		tasks.put(url, task);
-		new Thread(() -> runTask(task)).start();
+		coordinatorExecutor.execute(() -> runTask(task));
 		return future;
 	}
 
 	private void runTask(TaskContext task) {
 		RandomAccessFile raf = null;
 		try {
-			// 1. fetch metadata
-			final long total;
-			final boolean range;
-			try (Response head = client.newCall(new Request.Builder().url(task.url).head().build()).execute()) {
-				if (!head.isSuccessful()) throw new IOException("HEAD " + head.code());
-				total = Long.parseLong(head.header("Content-Length", "-1"));
-				range = head.code() == 206 || "bytes".equalsIgnoreCase(head.header("Accept-Ranges"));
+			Metadata meta = fetchMetadata(task.url);
+			ChunkPlan plan = computeChunkPlan(meta);
+			BitSet bits = restoreResumeState(task, meta, plan);
+			raf = openOutputFile(task.out, meta.total());
+			if (task.done.get() < plan.chunks()) {
+				runChunkDownloads(task, plan, meta, raf, bits);
 			}
-
-			// 2. calculate chunk count
-			int chunks;
-			if (total <= 0 || !range) chunks = 1;
-			else {
-				int candidate = (int) Math.min(128, Math.max(4, total / 512 * 1024));
-				chunks = (total / Math.max(candidate, 1)) > 0 ? candidate : 1;
-			}
-			long part = total > 0 ? total / chunks : total;
-
-			// 3. resume or initialize
-			byte[] saved = mmkv.decodeBytes(task.key);
-			BitSet bits = (range && saved != null) ? BitSet.valueOf(saved) : new BitSet();
-			task.done.set(bits.cardinality());
-			if (total > 0) {
-				long initialDownloaded = IntStream.range(0, chunks)
-								.filter(bits::get)
-								.mapToLong(i -> chunkLength(i, chunks, part, total))
-								.sum();
-				task.downloadedBytes.set(initialDownloaded);
-				maybeReportProgress(task, total);
-			}
-			raf = new RandomAccessFile(task.out, "rw");
-			if (total > 0) raf.setLength(total);
-			else raf.setLength(0);
-
-			// 4. submit task
-			if (task.done.get() < chunks) {
-				RandomAccessFile finalRaf = raf;
-				CompletableFuture.allOf(IntStream.range(0, chunks).filter(i -> !bits.get(i)) // skip finished
-								.mapToObj(i -> CompletableFuture.runAsync(() -> downloadChunk(task, i, chunks, part, total, range, finalRaf, bits), executor)).toArray(CompletableFuture[]::new)).join();
-			}
-
-			// 5. clean up
-			if (!task.isInactive()) {
-				mmkv.removeValueForKey(task.key);
-				tasks.remove(task.url);
-				task.future.complete(task.out);
-				if (task.callback != null) task.callback.onComplete(task.out);
-			}
+			completeTask(task);
 		} catch (Exception e) {
 			if (!task.isInactive()) {
 				tasks.remove(task.url);
 				task.future.completeExceptionally(e);
-				if (task.callback != null)
-					task.callback.onError(e instanceof RuntimeException && e.getCause() instanceof Exception ? (Exception) e.getCause() : e);
+				if (task.callback != null) {
+					task.callback.onError(unwrapDownloadError(e));
+				}
 			}
 		} finally {
-			try {
-				if (raf != null) raf.close();
-			} catch (IOException ignored) {
-			}
+			closeQuietly(raf);
 		}
 	}
 
-	private void downloadChunk(TaskContext task, int idx, int totalChunks, long partSize, long totalLen, boolean rangeSupported, RandomAccessFile raf, BitSet bits) {
+	private Metadata fetchMetadata(@NonNull String url) throws IOException {
+		try (Response head = client.newCall(new Request.Builder().url(url).head().build()).execute()) {
+			if (!head.isSuccessful()) throw new IOException("HEAD " + head.code());
+			long total = Long.parseLong(head.header("Content-Length", "-1"));
+			boolean range = head.code() == 206 || "bytes".equalsIgnoreCase(head.header("Accept-Ranges"));
+			return new Metadata(total, range);
+		}
+	}
+
+	private ChunkPlan computeChunkPlan(@NonNull Metadata meta) {
+		int chunks;
+		if (meta.total() <= 0 || !meta.rangeSupported()) {
+			chunks = 1;
+		} else {
+			int candidate = (int) Math.min(128, Math.max(4, meta.total() / (512 * 1024)));
+			chunks = (meta.total() / Math.max(candidate, 1)) > 0 ? candidate : 1;
+		}
+		long part = meta.total() > 0 ? meta.total() / chunks : meta.total();
+		return new ChunkPlan(chunks, part);
+	}
+
+	private BitSet restoreResumeState(@NonNull TaskContext task, @NonNull Metadata meta, @NonNull ChunkPlan plan) {
+		byte[] saved = mmkv.decodeBytes(task.key);
+		BitSet bits = (meta.rangeSupported() && saved != null) ? BitSet.valueOf(saved) : new BitSet();
+		task.done.set(bits.cardinality());
+		if (meta.total() > 0) {
+			long initialDownloaded = IntStream.range(0, plan.chunks())
+					.filter(bits::get)
+					.mapToLong(i -> chunkLength(i, plan.chunks(), plan.partSize(), meta.total()))
+					.sum();
+			task.downloadedBytes.set(initialDownloaded);
+			maybeReportProgress(task, meta.total());
+		}
+		return bits;
+	}
+
+	@NonNull
+	private RandomAccessFile openOutputFile(@NonNull File out, long total) throws IOException {
+		RandomAccessFile raf = new RandomAccessFile(out, "rw");
+		raf.setLength(total > 0 ? total : 0);
+		return raf;
+	}
+
+	private void runChunkDownloads(@NonNull TaskContext task, @NonNull ChunkPlan plan, @NonNull Metadata meta,
+	                               @NonNull RandomAccessFile raf, @NonNull BitSet bits) {
+		CompletableFuture.allOf(IntStream.range(0, plan.chunks())
+				.filter(i -> !bits.get(i))
+				.mapToObj(i -> CompletableFuture.runAsync(
+						() -> downloadChunk(task, i, plan, meta, raf, bits),
+						executor))
+				.toArray(CompletableFuture[]::new)).join();
+	}
+
+	private void completeTask(@NonNull TaskContext task) {
+		mmkv.removeValueForKey(task.key);
+		tasks.remove(task.url);
+		task.future.complete(task.out);
+		if (task.callback != null) task.callback.onComplete(task.out);
+	}
+
+	private void closeQuietly(@Nullable RandomAccessFile raf) {
+		if (raf == null) return;
+		try {
+			raf.close();
+		} catch (IOException e) {
+			Log.w(TAG, "runTask: failed to close random access file", e);
+		}
+	}
+
+	private static Exception unwrapDownloadError(Exception e) {
+		Throwable cur = e;
+		while (cur instanceof CompletionException || cur instanceof ChunkDownloadException) {
+			Throwable cause = cur.getCause();
+			if (!(cause instanceof Exception)) break;
+			cur = cause;
+		}
+		return (Exception) cur;
+	}
+
+	private void downloadChunk(TaskContext task, int idx, ChunkPlan plan, Metadata meta, RandomAccessFile raf, BitSet bits) {
 		if (task.isInactive()) return;
-		long start = idx * partSize;
-		long end = (idx == totalChunks - 1 && totalLen > 0) ? totalLen - 1 : (start + partSize - 1);
-		String range = rangeSupported && totalLen > 0 ? "bytes=" + start + "-" + end : null;
+		long start = idx * plan.partSize();
+		long end = (idx == plan.chunks() - 1 && meta.total() > 0) ? meta.total() - 1 : (start + plan.partSize() - 1);
+		String range = meta.rangeSupported() && meta.total() > 0 ? "bytes=" + start + "-" + end : null;
 
 		Request.Builder rb = new Request.Builder().url(task.url);
 		if (range != null) rb.header("Range", range);
@@ -193,9 +251,9 @@ public class StreamDownloaderImpl implements StreamDownloader {
 						raf.seek(offset);
 						raf.write(buf, 0, read);
 					}
-					if (totalLen > 0) {
+					if (meta.total() > 0) {
 						task.downloadedBytes.addAndGet(read);
-						maybeReportProgress(task, totalLen);
+						maybeReportProgress(task, meta.total());
 					}
 					offset += read;
 				}
@@ -205,7 +263,7 @@ public class StreamDownloaderImpl implements StreamDownloader {
 				}
 			}
 		} catch (Exception e) {
-			throw new RuntimeException(e);
+			throw new ChunkDownloadException(e);
 		}
 	}
 
@@ -228,7 +286,7 @@ public class StreamDownloaderImpl implements StreamDownloader {
 	@Override
 	public void resume(@NonNull String url) {
 		TaskContext t = tasks.get(url);
-		if (t != null && t.paused.compareAndSet(true, false)) new Thread(() -> runTask(t)).start();
+		if (t != null && t.paused.compareAndSet(true, false)) coordinatorExecutor.execute(() -> runTask(t));
 	}
 
 	@Override
@@ -257,9 +315,18 @@ public class StreamDownloaderImpl implements StreamDownloader {
 		}
 	}
 
-/**
- * Component that handles app logic.
- */
+	private record Metadata(long total, boolean rangeSupported) {
+	}
+
+	private record ChunkPlan(int chunks, long partSize) {
+	}
+
+	private static final class ChunkDownloadException extends RuntimeException {
+		ChunkDownloadException(Exception cause) { super(cause); }
+
+		Exception unwrap() { return (Exception) getCause(); }
+	}
+
 	@AllArgsConstructor
 	private static class TaskContext {
 		final String url;

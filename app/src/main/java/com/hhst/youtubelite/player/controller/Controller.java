@@ -40,7 +40,7 @@ import androidx.media3.ui.AspectRatioFrameLayout;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.hhst.youtubelite.Constant;
+import com.hhst.youtubelite.AppConstants;
 import com.hhst.youtubelite.R;
 import com.hhst.youtubelite.browser.TabManager;
 import com.hhst.youtubelite.browser.YoutubeFragment;
@@ -72,9 +72,6 @@ import javax.inject.Inject;
 import dagger.hilt.android.scopes.ActivityScoped;
 import lombok.Setter;
 
-/**
- * Enumeration of app logic.
- */
 enum PlaybackPrimaryAction {
 	PLAY(R.drawable.ic_play, R.string.action_play, false, false),
 	PAUSE(R.drawable.ic_pause, R.string.action_pause, true, false),
@@ -101,8 +98,11 @@ enum PlaybackPrimaryAction {
 	                                 @NonNull PlayerLoopMode loopMode,
 	                                 final boolean inMiniPlayer,
 	                                 final boolean inQueue,
-	                                 final boolean hasPlaylistContext) {
+	                                 final boolean hasPlaylistContext,
+	                                 final boolean casting) {
 		if (isPlaying) return PAUSE;
+		// Casting: never offer REPLAY, center button only toggles play/pause.
+		if (casting) return PLAY;
 		if (!inMiniPlayer
 						&& playbackState == Player.STATE_ENDED
 						&& (loopMode == PlayerLoopMode.PAUSE_AT_END || (!inQueue && !hasPlaylistContext))) {
@@ -158,6 +158,42 @@ public class Controller {
 	private TextView hintText;
 	@Setter
 	private boolean longPress = false;
+	/** Invoked when the user picks the Cast entry in the more-options sheet. */
+	@Setter
+	@Nullable
+	private Runnable onCastRequested;
+	/** Invoked when the user taps "Stop casting" in the more-options sheet. */
+	@Setter
+	@Nullable
+	private Runnable onCastStopRequested;
+	/** While true, the phone is acting as a remote for a Chromecast; local-render
+	 * controls (PiP, zoom, auto-fullscreen rotation) are disabled and a "Casting
+	 * to …" indicator is shown over the video surface. */
+	private boolean casting = false;
+	/**
+	 * True when a hardware Chromecast CastSession is up and the local ExoPlayer
+	 * is paused while the phone acts as a remote. Distinct from
+	 * {@link com.hhst.youtubelite.cast.CastPlaybackController#isLinkProxyRunning()},
+	 * which indicates a long-lived share link is alive over the local proxy but
+	 * opens no CastSession (and
+	 * {@link com.hhst.youtubelite.cast.CastPlaybackController#isLinkCasting()},
+	 * which additionally requires a browser to be actively consuming it).
+	 */
+	private boolean chromecastSessionActive = false;
+	@Nullable
+	private String castingDeviceName;
+	@Nullable
+	private android.view.View castIndicator;
+	@Nullable
+	private android.widget.TextView castIndicatorText;
+	/**
+	 * Dismissible "streaming via link" banner over the player surface, shown
+	 * while a long-lived share link is alive. The user can dismiss it locally;
+	 * the underlying link session (and proxy) is only torn down when the user
+	 * taps its close button.
+	 */
+	@Nullable
+	private android.view.View linkBanner;
 	@NonNull
 	private ControllerState state = ControllerState.initial();
 	private boolean autoFs = false;
@@ -201,7 +237,7 @@ public class Controller {
 		}
 		this.playerView.setOnMiniPlayerBackgroundTap(() -> setControlsVisible(!isControlsVisible()));
 		this.zoomListener.setOnShowReset(show ->
-						showReset(show && isControlsVisible() && state.mode() == ControllerState.Mode.FULLSCREEN_UNLOCK));
+						showReset(show && isControlsVisible() && state.getMode() == ControllerState.Mode.FULLSCREEN_UNLOCK));
 
 
 		playerView.post(() -> {
@@ -240,7 +276,8 @@ public class Controller {
 	                             final int previousOrientation,
 	                             final int orientation,
 	                             final boolean physicalLandscape,
-	                             final boolean suppressed) {
+	                             final boolean suppressed,
+	                             final boolean casting) {
 		return watch
 						&& rotate
 						&& visible
@@ -248,6 +285,7 @@ public class Controller {
 						&& !pip
 						&& !mini
 						&& !suppressed
+						&& !casting
 						&& physicalLandscape
 						&& previousOrientation == Configuration.ORIENTATION_PORTRAIT
 						&& orientation == Configuration.ORIENTATION_LANDSCAPE;
@@ -305,7 +343,26 @@ public class Controller {
 
 	private void refreshPlaybackButtons() {
 		updateCenterPlaybackButtons(getCenterPrimaryAction());
-		updatePlayPauseVisibility(R.id.btn_mini_play, R.id.btn_mini_pause, engine.isPlaying());
+		if (casting) {
+			// Mini-player: show a single "Stop casting" button while casting.
+			ImageButton miniPlay = playerView.findViewById(R.id.btn_mini_play);
+			View miniPause = playerView.findViewById(R.id.btn_mini_pause);
+			if (miniPlay != null) {
+				miniPlay.setImageResource(R.drawable.ic_stop);
+				miniPlay.setContentDescription(activity.getString(R.string.cast_stop));
+				miniPlay.setVisibility(View.VISIBLE);
+			}
+			if (miniPause != null) miniPause.setVisibility(View.GONE);
+		} else {
+			// Restore the default play icon in case it was swapped for the stop
+			// icon while casting.
+			ImageButton miniPlay = playerView.findViewById(R.id.btn_mini_play);
+			if (miniPlay != null) {
+				miniPlay.setImageResource(R.drawable.ic_play);
+				miniPlay.setContentDescription(activity.getString(R.string.action_play));
+			}
+			updatePlayPauseVisibility(R.id.btn_mini_play, R.id.btn_mini_pause, engine.isPlaying());
+		}
 	}
 
 	@NonNull
@@ -316,12 +373,28 @@ public class Controller {
 						getLoopMode(),
 						state.isInMiniPlayer(),
 						engine.isCurrentVideoInQueue(),
-						tabManager.watchHasPlaylist());
+						tabManager.watchHasPlaylist(),
+						casting);
 	}
 
 	private void updateCenterPlaybackButtons(@NonNull PlaybackPrimaryAction action) {
 		ImageButton play = playerView.findViewById(R.id.btn_play);
 		View pause = playerView.findViewById(R.id.btn_pause);
+		if (casting) {
+			// While casting, the center button is a "Stop casting" affordance:
+			// the receiver's play/pause can't be reliably driven from here
+			// (media is loaded via RemoteMediaClient, bypassing CastPlayer's
+			// internal state), so we offer disconnect instead. Uses a solid
+			// white square (ic_stop) to match the play/pause icon color and
+			// weight on the player overlay.
+			if (play != null) {
+				play.setImageResource(R.drawable.ic_stop);
+				play.setContentDescription(activity.getString(R.string.cast_stop));
+				play.setVisibility(View.VISIBLE);
+			}
+			if (pause != null) pause.setVisibility(View.GONE);
+			return;
+		}
 		if (play != null) {
 			if (!action.showsPauseButton()) {
 				play.setImageResource(action.iconRes());
@@ -339,9 +412,130 @@ public class Controller {
 		if (this.hintText != null) {
 			int pad = ViewUtils.dpToPx(activity, 8);
 			this.hintText.setPadding(pad, pad / 2, pad, pad / 2);
-			final FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) this.hintText.getLayoutParams();
-			lp.topMargin = ViewUtils.dpToPx(activity, 24);
-			this.hintText.setLayoutParams(lp);
+			// The banner container in player_view.xml now positions hint_text
+			// vertically alongside cast_indicator and link_banner; no manual
+			// topMargin is needed.
+		}
+		this.castIndicator = playerView.findViewById(R.id.cast_indicator);
+		this.castIndicatorText = playerView.findViewById(R.id.cast_indicator_text);
+		this.linkBanner = playerView.findViewById(R.id.link_banner);
+		if (this.castIndicator != null) {
+			this.castIndicator.setOnClickListener(v -> {
+				Runnable r = onCastRequested;
+				if (r != null) r.run();
+			});
+		}
+		if (this.linkBanner != null) {
+			android.view.View close = linkBanner.findViewById(R.id.link_banner_close);
+			if (close != null) {
+				close.setOnClickListener(v -> hideLinkBanner());
+			}
+		}
+	}
+
+	/**
+	 * Updates casting state. While casting, local-render controls are hidden and a
+	 * "Casting to <device>" indicator is shown; only center play/pause, queue nav, and
+	 * Stop casting controls stay usable.
+	 */
+	public void setCasting(boolean casting, @Nullable String deviceName) {
+		this.casting = casting;
+		// Track hardware Chromecast sessions separately — the lower Cast dialog
+	 // needs to surface a "Stop casting" affordance only for these; a live
+		// share link over the proxy never opens a CastSession.
+		this.chromecastSessionActive = casting && deviceName != null;
+		this.castingDeviceName = deviceName;
+		applyCastIndicator();
+		applyCastControlRestrictions();
+		applyCastBlackout();
+		// Drop out of zoom while casting; zoom targets the local surface.
+		if (casting) zoomListener.setZoomed(false);
+		refreshPlaybackButtons();
+	}
+
+	/** Returns whether the phone is currently acting as a Cast remote. */
+	public boolean isCasting() {
+		return casting;
+	}
+
+	/**
+	 * Hides the dismissible link banner (if any) over the player surface. The
+	 * banner is shown by {@link #showLinkBanner()} while a long-lived share
+	 * link is alive — the user can dismiss it from the banner itself, or
+	 * {@link com.hhst.youtubelite.player.LitePlayer#closeShareLink()} calls
+	 * this when the link is torn down.
+	 */
+	public void hideLinkBanner() {
+		android.view.View banner = linkBanner;
+		if (banner != null) {
+			banner.setVisibility(View.GONE);
+		}
+	}
+
+	/**
+	 * Shows a dismissible banner above the player while a long-lived share
+	 * link is alive. The banner carries a close button that calls
+	 * {@link #hideLinkBanner()}.
+	 */
+	public void showLinkBanner() {
+		if (linkBanner == null) return;
+		linkBanner.setVisibility(View.VISIBLE);
+	}
+
+	/**
+	 * Returns whether the phone is currently acting as a Cast remote for a
+	 * hardware Chromecast device (i.e. a CastSession is up). Distinct from
+	 * long-lived share-link sessions, which flow over the local proxy but do
+	 * not open a CastSession.
+	 */
+	public boolean isChromecastSession() {
+		return chromecastSessionActive;
+	}
+
+	/**
+	 * Hides or re-enables local-render controls depending on the casting state.
+	 * While casting these controls either have no effect on the receiver
+	 * (quality/speed/subtitles/loop/segments) or target the empty local surface
+	 * (fullscreen/lock/reset/resize/audio-track), so they are hidden.
+	 */
+	private void applyCastControlRestrictions() {
+		int visibility = casting ? View.GONE : View.VISIBLE;
+		// Center play/pause always stays visible — it forwards to the delegate.
+		setVisibilityIfFound(R.id.btn_quality, visibility);
+		setVisibilityIfFound(R.id.btn_speed, visibility);
+		setVisibilityIfFound(R.id.btn_subtitles, visibility);
+		setVisibilityIfFound(R.id.btn_loop, visibility);
+		setVisibilityIfFound(R.id.btn_segments, visibility);
+		setVisibilityIfFound(R.id.btn_fullscreen, visibility);
+		setVisibilityIfFound(R.id.btn_lock, casting ? View.GONE : View.VISIBLE);
+		setVisibilityIfFound(R.id.btn_reset, casting ? View.GONE : View.VISIBLE);
+		// Progress bar targets the local timeline; hide it while casting.
+		setVisibilityIfFound(R.id.exo_progress, visibility);
+	}
+
+	private void applyCastBlackout() {
+		View blackout = playerView.findViewById(R.id.cast_blackout);
+		if (blackout != null) {
+			blackout.setVisibility(chromecastSessionActive ? View.VISIBLE : View.GONE);
+		}
+	}
+
+	private void setVisibilityIfFound(int viewId, int visibility) {
+		View v = playerView.findViewById(viewId);
+		if (v != null) v.setVisibility(visibility);
+	}
+
+	private void applyCastIndicator() {
+		if (castIndicator == null) return;
+		if (casting) {
+			if (castIndicatorText != null) {
+				String name = castingDeviceName != null ? castingDeviceName
+						: activity.getString(R.string.cast);
+				castIndicatorText.setText(activity.getString(R.string.casting_to, name));
+			}
+			castIndicator.setVisibility(View.VISIBLE);
+		} else {
+			castIndicator.setVisibility(View.GONE);
 		}
 	}
 
@@ -359,13 +553,18 @@ public class Controller {
 				handler.removeCallbacks(hideControls);
 			}
 			boolean handled = detector.onTouchEvent(ev);
-			if (!handled && isFullscreen()) zoomListener.onTouch(ev);
+			// No local surface while casting; ignore pinch-to-zoom.
+			if (!handled && isFullscreen() && !casting) zoomListener.onTouch(ev);
 			if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
 				gestureListener.onTouchRelease();
 				if (longPress) {
 					longPress = false;
 					engine.setPlaybackRate(prefs.getSpeed());
 					hideHint();
+				} else if (action == MotionEvent.ACTION_UP) {
+					// Honor the accessibility click contract; the gesture detector
+					// still owns the actual single-tap semantics.
+					v.performClick();
 				}
 				if (isControlsVisible()) hideControlsAutomatically();
 			}
@@ -431,6 +630,11 @@ public class Controller {
 
 	private void setupPlaybackButtons() {
 		setClick(R.id.btn_play, v -> {
+			if (casting) {
+				Runnable r = onCastStopRequested;
+				if (r != null) r.run();
+				return;
+			}
 			if (getCenterPrimaryAction().restartsCurrentItem()) {
 				engine.seekTo(0);
 			}
@@ -438,10 +642,20 @@ public class Controller {
 			setControlsVisible(true);
 		});
 		setClick(R.id.btn_mini_play, v -> {
+			if (casting) {
+				Runnable r = onCastStopRequested;
+				if (r != null) r.run();
+				return;
+			}
 			engine.play();
 			setControlsVisible(true);
 		});
 		setClicks(new int[]{R.id.btn_pause, R.id.btn_mini_pause}, v -> {
+			if (casting) {
+				Runnable r = onCastStopRequested;
+				if (r != null) r.run();
+				return;
+			}
 			engine.pause();
 			setControlsVisible(true);
 		});
@@ -459,7 +673,7 @@ public class Controller {
 			lockBtn.setOnClickListener(v -> {
 				toggleLockState();
 				showHint(activity.getString(state.isLocked() ? R.string.lock_screen : R.string.unlock_screen),
-								com.hhst.youtubelite.player.common.Constant.HINT_HIDE_DELAY_MS);
+								com.hhst.youtubelite.player.common.PlayerUiConstants.HINT_HIDE_DELAY_MS);
 			});
 		}
 
@@ -480,7 +694,7 @@ public class Controller {
 			loopBtn.setOnClickListener(v -> {
 				PlayerLoopMode newMode = getLoopMode().next();
 				setLoopMode(newMode);
-				showHint(activity.getString(getLoopModeLabelRes(newMode)), com.hhst.youtubelite.player.common.Constant.HINT_HIDE_DELAY_MS);
+				showHint(activity.getString(getLoopModeLabelRes(newMode)), com.hhst.youtubelite.player.common.PlayerUiConstants.HINT_HIDE_DELAY_MS);
 				setControlsVisible(true);
 			});
 		}
@@ -560,7 +774,11 @@ public class Controller {
 				if (available.isEmpty()) return;
 				String[] labels = available.toArray(new String[0]);
 				String[] values = available.toArray(new String[0]);
-				int checked = prefs.getPreferredQuality() == null ? -1 : Arrays.asList(values).indexOf(engine.getQuality());
+				int checked = qualitySelectionIndex(
+								prefs.getPreferredQuality(),
+								engine.isQualityManuallySelected(),
+								engine.getQuality(),
+								values);
 				showSelectionPopup(v, labels, checked, (index, label) -> {
 					String selected = values[index];
 					engine.onQualitySelected(selected);
@@ -574,7 +792,7 @@ public class Controller {
 
 	@NonNull
 	private String qualityButtonLabel() {
-		if (prefs.getPreferredQuality() != null) {
+		if (!shouldShowAutoQualityPrefix(prefs.getPreferredQuality(), engine.isQualityManuallySelected())) {
 			return engine.getQualityLabel();
 		}
 		if (engine.getPlaybackState() == Player.STATE_IDLE) {
@@ -587,6 +805,21 @@ public class Controller {
 		return activity.getString(R.string.player_quality_auto) + " " + quality;
 	}
 
+	static boolean shouldShowAutoQualityPrefix(@Nullable String preferredQuality,
+	                                           boolean manualQualitySelected) {
+		return preferredQuality == null && !manualQualitySelected;
+	}
+
+	static int qualitySelectionIndex(@Nullable String preferredQuality,
+	                                 boolean manualQualitySelected,
+	                                 @Nullable String quality,
+	                                 @NonNull String[] values) {
+		if (shouldShowAutoQualityPrefix(preferredQuality, manualQualitySelected)) {
+			return -1;
+		}
+		return quality == null ? -1 : Arrays.asList(values).indexOf(quality);
+	}
+
 	private void setupSubtitleAndSegmentButtons() {
 		// Build compact pickers for subtitle, segment, and audio choices.
 		ImageButton subBtn = playerView.findViewById(R.id.btn_subtitles);
@@ -595,7 +828,7 @@ public class Controller {
 			subBtn.setOnClickListener(v -> {
 				List<String> available = engine.getSubtitles();
 				if (available.isEmpty()) {
-					showHint(activity.getString(R.string.no_subtitles), com.hhst.youtubelite.player.common.Constant.HINT_HIDE_DELAY_MS);
+					showHint(activity.getString(R.string.no_subtitles), com.hhst.youtubelite.player.common.PlayerUiConstants.HINT_HIDE_DELAY_MS);
 					hideControlsAutomatically();
 					return;
 				}
@@ -605,11 +838,11 @@ public class Controller {
 				showSelectionPopup(subBtn, options, checked, (index, label) -> {
 					if (index == checked) {
 						engine.setSubtitlesEnabled(false);
-						showHint(activity.getString(R.string.subtitles_off), com.hhst.youtubelite.player.common.Constant.HINT_HIDE_DELAY_MS);
+						showHint(activity.getString(R.string.subtitles_off), com.hhst.youtubelite.player.common.PlayerUiConstants.HINT_HIDE_DELAY_MS);
 					} else {
 						engine.setSubtitlesEnabled(true);
 						engine.setSubtitleLanguage(label);
-						showHint(activity.getString(R.string.subtitles_on) + ": " + label, com.hhst.youtubelite.player.common.Constant.HINT_HIDE_DELAY_MS);
+						showHint(activity.getString(R.string.subtitles_on) + ": " + label, com.hhst.youtubelite.player.common.PlayerUiConstants.HINT_HIDE_DELAY_MS);
 					}
 					updateSubtitleButtonState();
 				});
@@ -630,7 +863,7 @@ public class Controller {
 				public void onSelected(int index, String label) {
 					StreamSegment segment = segments.get(index);
 					engine.seekTo(segment.getStartTimeSeconds() * 1000L);
-					showHint(activity.getString(R.string.jumped_to_segment, segment.getTitle()), com.hhst.youtubelite.player.common.Constant.HINT_HIDE_DELAY_MS);
+					showHint(activity.getString(R.string.jumped_to_segment, segment.getTitle()), com.hhst.youtubelite.player.common.PlayerUiConstants.HINT_HIDE_DELAY_MS);
 				}
 
 				@Override
@@ -644,7 +877,7 @@ public class Controller {
 									segment.getPreviewUrl() != null ? segment.getPreviewUrl() : engine.getThumbnailUrl());
 					b.setView(v).setPositiveButton(R.string.jump, (d, w) -> {
 						engine.seekTo(segment.getStartTimeSeconds() * 1000L);
-						showHint(activity.getString(R.string.jumped_to_segment, segment.getTitle()), com.hhst.youtubelite.player.common.Constant.HINT_HIDE_DELAY_MS);
+						showHint(activity.getString(R.string.jumped_to_segment, segment.getTitle()), com.hhst.youtubelite.player.common.PlayerUiConstants.HINT_HIDE_DELAY_MS);
 						hideControlsAutomatically();
 					}).setNegativeButton(R.string.close, null).show();
 				}
@@ -694,18 +927,73 @@ public class Controller {
 			}
 
 			setupBottomSheetOption(bottomSheetView, R.id.option_resize_mode, b -> {
+				if (casting) return;
 				showResizeModeOptions();
 				bottomSheetDialog.dismiss();
 			});
+			// Resize targets local surface; hide while casting.
+			View resizeOption = bottomSheetView.findViewById(R.id.option_resize_mode);
+			if (resizeOption != null) {
+				resizeOption.setVisibility(casting ? View.GONE : View.VISIBLE);
+			}
+				View castOption = bottomSheetView.findViewById(R.id.option_cast);
+				if (castOption != null) {
+					Runnable castRequested = onCastRequested;
+					Runnable castStopRequested = onCastStopRequested;
+					if (castRequested != null) {
+						castOption.setVisibility(View.VISIBLE);
+						// "Stop casting" (red stop glyph) for a real Chromecast
+						// session; "Cast" (default glyph) otherwise (never cast
+						// or casting via link only). Hiding "Stop" for link
+						// sessions keeps the proxy alive until the user closes
+						// the activity or the banner.
+						boolean isChromecast = isChromecastSession();
+						android.widget.TextView castLabel = castOption.findViewWithTag("label");
+						if (castLabel != null) {
+							castLabel.setText(casting && isChromecast
+									? R.string.cast_stop : R.string.cast);
+						}
+						android.widget.ImageView castIcon = castOption.findViewWithTag("icon");
+						if (castIcon != null) {
+							if (casting && isChromecast) {
+								castIcon.setImageResource(R.drawable.ic_stop);
+								castIcon.setColorFilter(activity.getColor(R.color.yt_red));
+							} else {
+								castIcon.setImageResource(R.drawable.ic_cast);
+								castIcon.clearColorFilter();
+							}
+						}
+						castOption.setOnClickListener(b -> {
+							bottomSheetDialog.dismiss();
+							// Only real Chromecast sessions can be stopped; tap
+							// while link-casting (or plain idle) opens the dialog.
+							if (casting && isChromecast && castStopRequested != null) {
+								castStopRequested.run();
+							} else {
+								castRequested.run();
+							}
+						});
+					} else {
+						castOption.setVisibility(View.GONE);
+					}
+				}
 			View pipOption = bottomSheetView.findViewById(R.id.option_pip);
 			if (pipOption != null) {
-				pipOption.setVisibility(extensionManager.isEnabled(Constant.ENABLE_PIP) ? View.VISIBLE : View.GONE);
+				// PiP renders local surface; no video while casting.
+				boolean pipEnabled = !casting && extensionManager.isEnabled(AppConstants.ENABLE_PIP);
+				pipOption.setVisibility(pipEnabled ? View.VISIBLE : View.GONE);
 			}
 			setupBottomSheetOption(bottomSheetView, R.id.option_audio_track, b -> {
 				showAudioTrackOptions();
 				bottomSheetDialog.dismiss();
 			});
+			// Audio tracks are local-only; hide while casting.
+			View audioTrackOption = bottomSheetView.findViewById(R.id.option_audio_track);
+			if (audioTrackOption != null) {
+				audioTrackOption.setVisibility(casting ? View.GONE : View.VISIBLE);
+			}
 			setupBottomSheetOption(bottomSheetView, R.id.option_pip, b -> {
+				if (casting) return;
 				playerView.enterPiP();
 				bottomSheetDialog.dismiss();
 			});
@@ -734,7 +1022,7 @@ public class Controller {
 		}
 		new MaterialAlertDialogBuilder(activity).setTitle(R.string.audio_track).setAdapter(getAdapter(checked, options), (dialog, which) -> {
 			engine.setAudioTrack(audioTracks.get(which));
-			showHint(options[which], com.hhst.youtubelite.player.common.Constant.HINT_HIDE_DELAY_MS);
+			showHint(options[which], com.hhst.youtubelite.player.common.PlayerUiConstants.HINT_HIDE_DELAY_MS);
 			hideControlsAutomatically();
 		}).setNegativeButton(R.string.cancel, null).show();
 	}
@@ -770,7 +1058,7 @@ public class Controller {
 	private void showVideoDetails() {
 		StreamCatalog details = engine.getStreamCatalog();
 		if (details == null) {
-			showHint(activity.getString(R.string.unable_to_get_stream_info), com.hhst.youtubelite.player.common.Constant.HINT_HIDE_DELAY_MS);
+			showHint(activity.getString(R.string.unable_to_get_stream_info), com.hhst.youtubelite.player.common.PlayerUiConstants.HINT_HIDE_DELAY_MS);
 			hideControlsAutomatically();
 			return;
 		}
@@ -779,10 +1067,16 @@ public class Controller {
 		String[] info = {getVideoDetailsText(details)};
 		builder.setMessage(info[0]).setNeutralButton(R.string.copy, (dialog, which) -> {
 			DeviceUtils.copyToClipboard(activity, "Video Details", info[0]);
-			showHint(activity.getString(R.string.debug_info_copied), com.hhst.youtubelite.player.common.Constant.HINT_HIDE_DELAY_MS);
+			showHint(activity.getString(R.string.debug_info_copied), com.hhst.youtubelite.player.common.PlayerUiConstants.HINT_HIDE_DELAY_MS);
 		});
 		AlertDialog dialog = builder.show();
 		hideControlsAutomatically();
+		// UI-thread 1-second tick that refreshes the debug info dialog (FPS,
+		// decoder counters, format/quality). Kept on a Handler rather than
+		// migrated to a coroutine because every operation here is non-blocking
+		// and must run on the main thread (ExoPlayer format/counter queries and
+		// StringBuilder assembly). Coroutines would add dispatch overhead
+		// without any concurrency benefit. Same pattern as Engine#onTimeUpdate.
 		Handler updateHandler = new Handler(Looper.getMainLooper());
 		updateHandler.post(new Runnable() {
 			@Override
@@ -862,7 +1156,7 @@ public class Controller {
 		} else {
 			suppressAutoEnterUntilPortrait = false;
 		}
-		final ControllerState.Mode previousState = state.mode();
+		final ControllerState.Mode previousState = state.getMode();
 		state = state.enterFullscreen();
 		applyControllerState(previousState, true);
 	}
@@ -888,7 +1182,7 @@ public class Controller {
 		manualFullscreenSensorExit = false;
 		manualFullscreenSawLandscape = false;
 		manualFullscreenPortraitSinceMs = 0L;
-		final ControllerState.Mode previousState = state.mode();
+		final ControllerState.Mode previousState = state.getMode();
 		state = state.exitFullscreen();
 		applyControllerState(previousState, true);
 		zoomListener.reset();
@@ -968,7 +1262,8 @@ public class Controller {
 						Configuration.ORIENTATION_PORTRAIT,
 						lastSyncedOrientation,
 						true,
-						suppressAutoEnterUntilPortrait);
+						suppressAutoEnterUntilPortrait,
+						casting);
 		pendingAutoEnterOnPhysicalLandscape = false;
 		if (shouldEnter) {
 			enterAutoFs();
@@ -1038,7 +1333,8 @@ public class Controller {
 						previousOrientation,
 						orientation,
 						true,
-						suppressAutoEnterUntilPortrait);
+						suppressAutoEnterUntilPortrait,
+						casting);
 		boolean shouldEnter = shouldEnterFs(
 						true,
 						autoRotate,
@@ -1049,7 +1345,8 @@ public class Controller {
 						previousOrientation,
 						orientation,
 						physicalLandscape,
-						suppressAutoEnterUntilPortrait);
+						suppressAutoEnterUntilPortrait,
+						casting);
 		pendingAutoEnterOnPhysicalLandscape = !shouldEnter
 						&& eligibleIfPhysicalLandscape
 						&& physicalOrientation == Configuration.ORIENTATION_PORTRAIT;
@@ -1077,19 +1374,19 @@ public class Controller {
 	}
 
 	public void onPictureInPictureModeChanged(boolean isInPiP) {
-		final ControllerState.Mode previousState = state.mode();
+		final ControllerState.Mode previousState = state.getMode();
 		state = isInPiP ? state.enterPip() : state.exitPip();
 		applyControllerState(previousState, !isInPiP);
 	}
 
 	public void enterMiniPlayer() {
-		final ControllerState.Mode previousState = state.mode();
+		final ControllerState.Mode previousState = state.getMode();
 		state = state.enterMiniPlayer();
 		applyControllerState(previousState, true);
 	}
 
 	public void exitMiniPlayer() {
-		final ControllerState.Mode previousState = state.mode();
+		final ControllerState.Mode previousState = state.getMode();
 		state = state.exitMiniPlayer();
 		applyControllerState(previousState, true);
 	}
@@ -1101,19 +1398,23 @@ public class Controller {
 		ImageButton lockBtn = playerView.findViewById(R.id.btn_lock);
 		updateLockButton(lockBtn);
 		if (center != null) {
-			ViewUtils.animateViewAlpha(center, renderState.centerVisible() ? 1.0f : 0.0f, View.GONE);
+			ViewUtils.animateViewAlpha(center, renderState.getCenterVisible() ? 1.0f : 0.0f, View.GONE);
 		}
 		if (other != null) {
-			ViewUtils.animateViewAlpha(other, renderState.otherVisible() ? 1.0f : 0.0f, View.GONE);
+			ViewUtils.animateViewAlpha(other, renderState.getOtherVisible() ? 1.0f : 0.0f, View.GONE);
 		}
 		if (bar != null) {
-			ViewUtils.animateViewAlpha(bar, renderState.progressVisible() ? 1.0f : 0.0f, View.GONE);
+			// applyCastControlRestrictions() already hides the progress bar while
+			// casting, but renderState is recomputed on every controls toggle and
+			// would re-show it. Keep it hidden for Chromecast/link-cast sessions.
+			boolean progressVisible = renderState.getProgressVisible() && !casting;
+			ViewUtils.animateViewAlpha(bar, progressVisible ? 1.0f : 0.0f, View.GONE);
 		}
-		showReset(renderState.resetVisible());
+		showReset(renderState.getResetVisible());
 		if (lockBtn != null) {
-			ViewUtils.animateViewAlpha(lockBtn, renderState.lockVisible() ? 1.0f : 0.0f, View.GONE);
+			ViewUtils.animateViewAlpha(lockBtn, renderState.getLockVisible() ? 1.0f : 0.0f, View.GONE);
 		}
-		updateMiniControls(renderState.miniVisible(), renderState.scrimVisible());
+		updateMiniControls(renderState.getMiniVisible(), renderState.getScrimVisible());
 	}
 
 	private void showReset(boolean show) {
@@ -1121,7 +1422,7 @@ public class Controller {
 		if (btn != null) btn.setVisibility(show ? View.VISIBLE : View.GONE);
 	}
 
-	private void hideControlsAutomatically() {
+	public void hideControlsAutomatically() {
 		handler.removeCallbacks(hideControls);
 		if (shouldAutoHideControls(engine.isPlaying(), state.isInPictureInPicture())) {
 			handler.postDelayed(hideControls, 3000);
@@ -1142,7 +1443,7 @@ public class Controller {
 	}
 
 	public boolean isControlsVisible() {
-		return state.controlsVisible();
+		return state.getControlsVisible();
 	}
 
 	public void setControlsVisible(boolean visible) {
@@ -1150,15 +1451,16 @@ public class Controller {
 		handler.removeCallbacks(hideControls);
 		final ControllerState.RenderState renderState = state.renderState(
 						engine.getPlaybackState() == Player.STATE_BUFFERING,
-						zoomListener.isZoomed());
+						zoomListener.isZoomed(),
+						casting);
 		applyRenderState(renderState);
-		if (renderState.controlsVisible()) {
+		if (renderState.getControlsVisible()) {
 			hideControlsAutomatically();
 		}
 	}
 
 	private void toggleLockState() {
-		final ControllerState.Mode previousState = state.mode();
+		final ControllerState.Mode previousState = state.getMode();
 		state = state.toggleLock();
 		applyControllerState(previousState, true);
 	}
@@ -1167,7 +1469,7 @@ public class Controller {
 	                                  final boolean controlsVisible) {
 		playerView.applyControllerState(
 						previousState,
-						state.mode(),
+						state.getMode(),
 						fsOrientation(autoFs, PlayerUtils.isPortrait(engine)),
 						prefs.getResizeMode());
 		if (state.isInPictureInPicture() || state.isInMiniPlayer()) {
@@ -1179,7 +1481,7 @@ public class Controller {
 
 	private void enterAutoFs() {
 		autoFs = true;
-		final ControllerState.Mode previousState = state.mode();
+		final ControllerState.Mode previousState = state.getMode();
 		state = state.enterFullscreen();
 		applyControllerState(previousState, true);
 	}
@@ -1191,9 +1493,9 @@ public class Controller {
 	private boolean isWatch() {
 		YoutubeFragment tab = tabManager.getTab();
 		if (tab == null) return false;
-		if (Constant.PAGE_WATCH.equals(tab.getTabTag())) return true;
+		if (AppConstants.PAGE_WATCH.equals(tab.getTabTag())) return true;
 		String url = tab.getUrl();
-		return url != null && Constant.PAGE_WATCH.equals(UrlUtils.getPageClass(url));
+		return url != null && AppConstants.PAGE_WATCH.equals(UrlUtils.getPageClass(url));
 	}
 
 	private void updateLockButton(@Nullable ImageButton lockBtn) {
@@ -1216,7 +1518,7 @@ public class Controller {
 		new MaterialAlertDialogBuilder(activity).setTitle(R.string.resize_mode).setAdapter(adapter, (d, w) -> {
 			playerView.setResizeMode(modes[w]);
 			prefs.setResizeMode(modes[w]);
-			showHint(opts[w], com.hhst.youtubelite.player.common.Constant.HINT_HIDE_DELAY_MS);
+			showHint(opts[w], com.hhst.youtubelite.player.common.PlayerUiConstants.HINT_HIDE_DELAY_MS);
 			hideControlsAutomatically();
 		}).setNegativeButton(R.string.cancel, null).show();
 	}
@@ -1370,9 +1672,6 @@ public class Controller {
 		}
 	}
 
-/**
- * Contract for app logic.
- */
 	private interface SelectionCallback {
 		void onSelected(int index, String label);
 

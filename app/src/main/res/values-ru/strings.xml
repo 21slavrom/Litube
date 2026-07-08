@@ -14,19 +14,13 @@
     <string name="audio_only">Аудио</string>
     <string name="close">Закрыть</string>
     <string name="save">Сохранить</string>
-    <string name="share">Поделиться</string>
-    <string name="share_thumbnail">Поделиться миниатюрой</string>
-    <string name="extension">Расширение</string>
-    <string name="request_restart">Перезапустите для применения изменений</string>
-    <string name="restart">Перезапустить</string>
+    <string name="share">Поделиться</string>    <string name="extension">Расширение</string>
     <string name="display_dislikes">Отображать "Не нравится"</string>
     <string name="hide_shorts">Скрыть "Shorts"</string>
     <string name="action_pause">Пауза</string>
     <string name="action_play">Играть</string>
     <string name="action_previous">Перейти к предыдущему</string>
-    <string name="action_next">Перейти к следующему</string>
-    <string name="general">Оформление</string>
-    <string name="player">Воспроизведение</string>
+    <string name="action_next">Перейти к следующему</string>    <string name="player">Воспроизведение</string>
     <string name="sponsorblock">SponsorBlock</string>
     <string name="skip_sponsors">Пропускать спонсоры</string>
     <string name="skip_sponsors_selfpromo">Пропускать самопиар</string>
@@ -130,9 +124,7 @@
     <string name="no_queue_items">Нет элементов очереди</string>
     <string name="queue_unknown_author">Неизвестный автор</string>
     <string name="queue_now_playing">Сейчас воспроизводится</string>
-    <string name="queue_download_unavailable">Нет элементов очереди для загрузки</string>
-    <string name="player_gestures">Жесты плеера</string>
-    <string name="action_replay">Повторить</string>
+    <string name="queue_download_unavailable">Нет элементов очереди для загрузки</string>    <string name="action_replay">Повторить</string>
     <string name="action_restore_watch">Вернуться к видео</string>
     <string name="playback_end_next">Воспроизвести следующее</string>
     <string name="playback_end_loop">Повторять видео</string>
@@ -176,4 +168,40 @@
     <string name="playlist_download_batch_segment_partial">Частично: %1$d</string>
     <string name="playlist_download_batch_segment_failed">Сбой: %1$d</string>
     <string name="playlist_download_started">Загрузка плейлиста начата</string>
+    <string name="open_with">Открыть с помощью</string>
+    <string name="interface_category">Интерфейс</string>
+    <string name="interface_summary">Показывать \"Не нравится\", скрывать Shorts</string>    <string name="set_as_default_app_title">Открывать ссылки по умолчанию</string>
+    <string name="set_as_default_app_message">Android не сделает Litube приложением по умолчанию для ссылок YouTube автоматически. Откройте настройки приложений системы, включите \"Открывать по умолчанию\" и подтвердите поддерживаемые ссылки, чтобы Litube мог обрабатывать URL YouTube.</string>
+    <string name="open_settings">Открыть настройки</string>
+    <string name="cast">Трансляция</string>
+    <string name="casting_to">Трансляция на %1$s</string>    <string name="cast_stop">Остановить трансляцию</string>
+    <string name="cast_connected_start_video">Трансляция подключена — начните воспроизведение видео</string>
+    <string name="cast_no_stream">Нет потока для трансляции этого видео</string>    <string name="cast_failed">Ошибка трансляции</string>
+    <string name="cast_disconnect">Отключить</string>    <string name="cast_no_devices_found">Устройства Cast не найдены</string>
+    <string name="cast_no_devices_hint">Убедитесь, что трансляция настроена в той же сети.</string>
+    <string name="cast_unavailable">Трансляция недоступна</string>
+    <string name="cast_unavailable_hint">Для трансляции требуются сервисы Google Play. Воспроизведение в браузере по-прежнему работает.</string>
+    <string name="cast_learn_casting">Подробнее о трансляции</string>
+    <string name="cast_section_devices">Доступные устройства</string>
+    <string name="cast_section_connected">Подключённые устройства</string>
+    <string name="cast_section_link">Открыть на любом устройстве</string>
+    <string name="cast_link_connected">Ссылка открыта в браузере</string>
+    <string name="cast_link_close">Закрыть ссылку</string>
+    <string name="cast_link_banner">Трансляция по ссылке</string>
+    <string name="playback_summary">Позиция, качество, скорость, режим масштабирования</string>
+    <string name="gesture">Жесты</string>
+    <string name="gesture_summary">Нажатия, перемотка, полноэкранный режим</string>
+    <string name="gesture_single_tap">Одно нажатие</string>
+    <string name="gesture_double_tap">Двойное нажатие</string>
+    <string name="gesture_long_press_speed">Долгое нажатие 2x</string>
+    <string name="gesture_seek">Проведите для перемотки</string>
+    <string name="gesture_fullscreen_swipe">Войти/выйти из полноэкранного режима</string>
+    <string name="enable_in_windowed">Включить в оконном режиме</string>
+    <string name="enable_in_fullscreen">Включить в полноэкранном режиме</string>
+    <string name="background_mini_player">Фон &amp; мини-плеер</string>
+    <string name="background_mini_player_summary">PiP, мини-плеер, фоновое воспроизведение</string>
+    <string name="sponsorblock_summary">Спонсоры, самопиар, выделенные фрагменты</string>
+    <string name="brightness">Яркость</string>
+    <string name="volume">Громкость</string>
+    <string name="reset_all_settings">Сбросить все настройки</string>
 </resources>

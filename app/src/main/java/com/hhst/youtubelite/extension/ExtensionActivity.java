@@ -1,7 +1,10 @@
 package com.hhst.youtubelite.extension;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -38,8 +41,10 @@ import dagger.hilt.android.AndroidEntryPoint;
  */
 @AndroidEntryPoint
 public class ExtensionActivity extends AppCompatActivity {
+	private static final String TAG = "ExtensionActivity";
 	private static final int TYPE_NAV = 0;
 	private static final int TYPE_TOGGLE = 1;
+	private static final int TYPE_ACTION = 2;
 	@Inject
 	ExtensionManager manager;
 	private final Deque<Extension> stack = new ArrayDeque<>();
@@ -135,7 +140,14 @@ public class ExtensionActivity extends AppCompatActivity {
 
 		@Override
 		public int getItemViewType(int position) {
-			return items.get(position).hasChildren() ? TYPE_NAV : TYPE_TOGGLE;
+			Extension item = items.get(position);
+			if (item.hasChildren()) {
+				return TYPE_NAV;
+			}
+			if (isActionKey(item.key())) {
+				return TYPE_ACTION;
+			}
+			return TYPE_TOGGLE;
 		}
 
 		@Override
@@ -150,6 +162,9 @@ public class ExtensionActivity extends AppCompatActivity {
 			if (viewType == TYPE_NAV) {
 				return new NavHolder(inflater.inflate(R.layout.item_extension_nav, parent, false));
 			}
+			if (viewType == TYPE_ACTION) {
+				return new ActionHolder(inflater.inflate(R.layout.item_extension_nav, parent, false));
+			}
 			return new ToggleHolder(inflater.inflate(R.layout.item_extension_toggle, parent, false));
 		}
 
@@ -158,6 +173,10 @@ public class ExtensionActivity extends AppCompatActivity {
 			Extension item = items.get(position);
 			if (holder instanceof NavHolder nav) {
 				nav.bind(item);
+				return;
+			}
+			if (holder instanceof ActionHolder action) {
+				action.bind(item);
 				return;
 			}
 			((ToggleHolder) holder).bind(item);
@@ -221,6 +240,75 @@ public class ExtensionActivity extends AppCompatActivity {
 			toggle.setChecked(manager.isEnabled(item.key()));
 			toggle.setOnCheckedChangeListener((buttonView, isChecked) -> manager.setEnabled(item.key(), isChecked));
 			itemView.setOnClickListener(v -> toggle.toggle());
+		}
+	}
+
+	private final class ActionHolder extends RecyclerView.ViewHolder {
+		private final TextView title;
+		private final TextView summary;
+		private final ImageView chevron;
+		private final ImageView icon;
+
+		private ActionHolder(@NonNull View itemView) {
+			super(itemView);
+			title = itemView.findViewById(R.id.title);
+			summary = itemView.findViewById(R.id.summary);
+			chevron = itemView.findViewById(R.id.chevron);
+			icon = itemView.findViewById(R.id.icon);
+		}
+
+		private void bind(@NonNull Extension item) {
+			title.setText(item.title());
+			if (item.summary() == 0) {
+				summary.setVisibility(View.GONE);
+			} else {
+				summary.setVisibility(View.VISIBLE);
+				summary.setText(item.summary());
+			}
+			if (item.icon() != 0) {
+				icon.setVisibility(View.VISIBLE);
+				icon.setImageResource(item.icon());
+			} else {
+				icon.setVisibility(View.GONE);
+			}
+			// Action rows navigate away from the app, so a chevron is misleading.
+			chevron.setVisibility(View.GONE);
+			itemView.setOnClickListener(v -> handleAction(item.key()));
+		}
+	}
+
+	private static boolean isActionKey(@Nullable String key) {
+		return PreferenceKeys.ACTION_SET_DEFAULT_APP.equals(key);
+	}
+
+	private void handleAction(@Nullable String key) {
+		if (PreferenceKeys.ACTION_SET_DEFAULT_APP.equals(key)) {
+			showSetDefaultAppDialog();
+		}
+	}
+
+	private void showSetDefaultAppDialog() {
+		new MaterialAlertDialogBuilder(this)
+						.setTitle(R.string.set_as_default_app_title)
+						.setMessage(R.string.set_as_default_app_message)
+						.setPositiveButton(R.string.open_settings, (d, w) -> openDefaultAppSettings())
+						.setNegativeButton(R.string.cancel, null)
+						.show();
+	}
+
+	private void openDefaultAppSettings() {
+		try {
+			Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+							Uri.parse("package:" + getPackageName()));
+			startActivity(intent);
+		} catch (RuntimeException e) {
+			Log.d(TAG, "openDefaultAppSettings: details settings activity unavailable", e);
+			// Some OEM ROMs strip the details settings activity; fall back to the generic default-apps page.
+			try {
+				startActivity(new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS));
+			} catch (RuntimeException ignored2) {
+				// No system settings target available.
+			}
 		}
 	}
 }

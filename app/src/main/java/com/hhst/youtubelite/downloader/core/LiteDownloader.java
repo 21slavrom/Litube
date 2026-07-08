@@ -8,7 +8,7 @@ import androidx.annotation.Nullable;
  */
 public interface LiteDownloader {
 
-	void setCallback(@NonNull String videoId, @Nullable ProgressCallback2 callback);
+	void setCallback(@NonNull String videoId, @Nullable ProgressCallback callback);
 
 	void download(@NonNull Task task);
 

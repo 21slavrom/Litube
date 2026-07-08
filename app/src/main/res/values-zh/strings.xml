@@ -29,21 +29,31 @@
     <string name="close">关闭</string>
     <string name="save">保存</string>
     <string name="share">分享</string>
-    <string name="open_with">打开方式</string>
-    <string name="share_thumbnail">分享封面</string>
-    <string name="extension">扩展</string>
-    <string name="request_restart">重启以应用更改</string>
-    <string name="restart">重启</string>
+    <string name="open_with">打开方式</string>    <string name="extension">扩展</string>
     <string name="display_dislikes">显示点踩数</string>
     <string name="hide_shorts">隐藏 Shorts</string>
     <string name="action_pause">暂停</string>
     <string name="action_play">播放</string>
     <string name="action_replay">重新播放</string>
     <string name="action_previous">上一个</string>
-    <string name="action_next">下一个</string>
-    <string name="general">外观</string>
-    <string name="interface_category">界面</string>
-    <string name="interface_summary">显示点踩数，隐藏 Shorts</string>
+    <string name="action_next">下一个</string>    <string name="interface_category">界面</string>
+    <string name="interface_summary">显示点踩数，隐藏 Shorts</string>    <string name="cast">投屏</string>    <string name="casting_to">正在投屏到 %1$s</string>    <string name="cast_stop">停止投屏</string>
+    <string name="cast_connected_start_video">已连接投屏 — 请开始播放视频</string>
+    <string name="cast_no_stream">此视频无可投屏的流</string>
+    <string name="cast_failed">投屏失败</string>
+    <string name="cast_disconnect">断开连接</string>    <string name="cast_no_devices_found">未发现投屏设备</string>
+    <string name="cast_no_devices_hint">请确保投屏设备已连接同一网络。</string>
+    <string name="cast_unavailable">无法使用投屏</string>
+    <string name="cast_unavailable_hint">投屏需要 Google Play 服务，浏览器播放仍可用。</string>
+    <string name="cast_learn_casting">了解投屏</string>
+    <string name="cast_section_devices">可用设备</string>
+    <string name="cast_section_connected">已连接设备</string>
+    <string name="cast_section_link">在任意设备打开</string>
+    <string name="cast_link_connected">链接投屏已开启</string>
+    <string name="cast_link_close">关闭链接</string>
+    <string name="cast_link_banner">正在通过链接投屏</string>    <string name="set_as_default_app_title">默认打开链接</string>
+    <string name="set_as_default_app_message">Android 不会自动将 Litube 设为 YouTube 链接的默认应用。请打开系统应用设置，开启\"默认打开\"并批准支持的链接，让 Litube 处理 YouTube 链接。</string>
+    <string name="open_settings">打开设置</string>
     <string name="player">播放</string>
     <string name="playback_summary">进度、画质、倍速、缩放模式</string>
     <string name="gesture">手势</string>
@@ -154,9 +164,7 @@
     <string name="type_thumbnail">封面</string>
     <string name="filename">文件名</string>
     <string name="reset_extension_message">将所有扩展设置恢复为默认值？</string>
-    <string name="reset_extension_title">重置扩展</string>
-    <string name="player_gestures">播放手势</string>
-    <string name="action_restore_watch">返回视频</string>
+    <string name="reset_extension_title">重置扩展</string>    <string name="action_restore_watch">返回视频</string>
     <string name="in_app_mini_player">应用内小窗</string>
     <string name="status_downloading_simple">下载中</string>
     <string name="type_playlist">播放列表</string>

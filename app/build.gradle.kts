@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.hilt)
 }
 
@@ -9,6 +10,12 @@ android {
 
     installation {
         installOptions.add("-t")
+    }
+
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+        }
     }
 
     lint {
@@ -53,6 +60,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    kotlinOptions {
+        jvmTarget = "17"
+        freeCompilerArgs = listOf("-Xjvm-default=all")
+    }
+
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false
@@ -72,6 +84,8 @@ dependencies {
     implementation(libs.lifecycle.process)
     implementation(libs.lifecycle.livedata)
     implementation(libs.lifecycle.viewmodel)
+    implementation(libs.kotlin.stdlib)
+    implementation(libs.kotlinx.coroutines.android)
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
@@ -89,9 +103,11 @@ dependencies {
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.exoplayer.dash)
     implementation(libs.media3.exoplayer.hls)
+    implementation(libs.media3.cast)
+    implementation(libs.play.services.cast.framework)
+    implementation(libs.nanohttpd)
     implementation(libs.media3.ui)
     implementation(libs.media3.datasource)
-    implementation(libs.media3.datasource.okhttp)
     implementation(libs.okhttp)
     implementation(libs.okio)
     implementation(libs.constraintlayout)
@@ -103,6 +119,7 @@ dependencies {
     annotationProcessor(libs.hilt.compiler)
     testImplementation(libs.junit)
     testImplementation(libs.mockito.core)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
 }

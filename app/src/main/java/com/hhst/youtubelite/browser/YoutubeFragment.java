@@ -12,7 +12,7 @@ import androidx.fragment.app.Fragment;
 import androidx.media3.common.util.UnstableApi;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import com.hhst.youtubelite.Constant;
+import com.hhst.youtubelite.AppConstants;
 import com.hhst.youtubelite.R;
 import com.hhst.youtubelite.cache.WebViewCachePolicy;
 import com.hhst.youtubelite.extension.ExtensionManager;
@@ -150,7 +150,7 @@ public final class YoutubeFragment extends Fragment {
 		super.onPause();
 		YoutubeWebview webView = this.webView;
 		if (webView == null || isHidden()) return;
-		if (Constant.PAGE_WATCH.equals(tag)) {
+		if (AppConstants.PAGE_WATCH.equals(tag)) {
 			return;
 		}
 		if (getActivity() != null && getActivity().isInPictureInPictureMode()) return;
@@ -165,7 +165,7 @@ public final class YoutubeFragment extends Fragment {
 		YoutubeWebview webView = this.webView;
 		if (webView == null) return;
 		if (hidden) {
-			if (Constant.PAGE_WATCH.equals(tag)) {
+			if (AppConstants.PAGE_WATCH.equals(tag)) {
 				return;
 			}
 			webView.setScriptActive(false);

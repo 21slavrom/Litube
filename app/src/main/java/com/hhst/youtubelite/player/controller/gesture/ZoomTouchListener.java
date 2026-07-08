@@ -17,9 +17,6 @@ import javax.inject.Inject;
 import dagger.hilt.android.scopes.ActivityScoped;
 import lombok.Setter;
 
-/**
- * Component that handles app logic.
- */
 @ActivityScoped
 @UnstableApi
 public class ZoomTouchListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
@@ -163,5 +160,15 @@ public class ZoomTouchListener extends ScaleGestureDetector.SimpleOnScaleGesture
 	// Controller uses this to toggle the reset button.
 	public boolean isZoomed() {
 		return scaleFactor > 1.01f;
+	}
+
+	/**
+	 * Resets the zoom state when set to {@code false}; no-op otherwise. Used by the controller to
+	 * exit zoom while casting.
+	 */
+	public void setZoomed(boolean zoomed) {
+		if (!zoomed && isZoomed()) {
+			reset();
+		}
 	}
 }

@@ -6,7 +6,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.google.gson.Gson;
-import com.hhst.youtubelite.Constant;
+import com.hhst.youtubelite.AppConstants;
 import com.hhst.youtubelite.extension.ExtensionManager;
 import com.tencent.mmkv.MMKV;
 
@@ -40,6 +40,7 @@ public final class PlayerPreferences {
 	private static final String KEY_MINI_PLAYER_TRANSLATION_Y_DP = "mini_player_translation_y_dp";
 	private static final String PREFIX_PROGRESS = "progress:";
 	private static final String PREFIX_ADAPTIVE_MUXED_FALLBACK = "adaptive_muxed_fallback:";
+	private static final String KEY_LAST_SUCCESS_CLIENT = "last_success_client";
 
 	private static final float DEFAULT_SPEED = 1.0f;
 	private static final long EXPIRATION_DAYS_3 = 3L * 24 * 60 * 60 * 1000;
@@ -65,27 +66,27 @@ public final class PlayerPreferences {
 	}
 
 	public float getSpeed() {
-		boolean enabled = extensionManager.isEnabled(com.hhst.youtubelite.extension.Constant.REMEMBER_PLAYBACK_SPEED);
+		boolean enabled = extensionManager.isEnabled(com.hhst.youtubelite.extension.PreferenceKeys.REMEMBER_PLAYBACK_SPEED);
 		if (!enabled) return DEFAULT_SPEED;
 		return mmkv.getFloat(KEY_PLAYBACK_SPEED, DEFAULT_SPEED);
 	}
 
 	public void setSpeed(float speed) {
-		boolean enabled = extensionManager.isEnabled(com.hhst.youtubelite.extension.Constant.REMEMBER_PLAYBACK_SPEED);
+		boolean enabled = extensionManager.isEnabled(com.hhst.youtubelite.extension.PreferenceKeys.REMEMBER_PLAYBACK_SPEED);
 		if (!enabled) return;
 		mmkv.encode(KEY_PLAYBACK_SPEED, speed);
 	}
 
 	@Nullable
 	public String getPreferredQuality() {
-		boolean enabled = extensionManager.isEnabled(com.hhst.youtubelite.extension.Constant.REMEMBER_QUALITY);
+		boolean enabled = extensionManager.isEnabled(com.hhst.youtubelite.extension.PreferenceKeys.REMEMBER_QUALITY);
 		if (!enabled) return null;
 		String quality = mmkv.decodeString(KEY_VIDEO_QUALITY, null);
 		return quality == null || quality.isBlank() ? null : quality;
 	}
 
 	public void setPreferredQuality(@NonNull String quality) {
-		boolean enabled = extensionManager.isEnabled(com.hhst.youtubelite.extension.Constant.REMEMBER_QUALITY);
+		boolean enabled = extensionManager.isEnabled(com.hhst.youtubelite.extension.PreferenceKeys.REMEMBER_QUALITY);
 		if (!enabled) return;
 		mmkv.encode(KEY_VIDEO_QUALITY, quality);
 	}
@@ -133,19 +134,19 @@ public final class PlayerPreferences {
 	}
 
 	public int getResizeMode() {
-		boolean enabled = extensionManager.isEnabled(Constant.REMEMBER_RESIZE_MODE);
+		boolean enabled = extensionManager.isEnabled(AppConstants.REMEMBER_RESIZE_MODE);
 		if (!enabled) return 0;
 		return mmkv.decodeInt(KEY_RESIZE_MODE, 0);
 	}
 
 	public void setResizeMode(int mode) {
-		boolean enabled = extensionManager.isEnabled(Constant.REMEMBER_RESIZE_MODE);
+		boolean enabled = extensionManager.isEnabled(AppConstants.REMEMBER_RESIZE_MODE);
 		if (!enabled) return;
 		mmkv.encode(KEY_RESIZE_MODE, mode);
 	}
 
 	public long getResumePosition(@Nullable String videoId) {
-		boolean enabled = extensionManager.isEnabled(Constant.REMEMBER_LAST_POSITION);
+		boolean enabled = extensionManager.isEnabled(AppConstants.REMEMBER_LAST_POSITION);
 		if (!enabled || videoId == null) return 0;
 		String key = PREFIX_PROGRESS + videoId;
 		String json = mmkv.decodeString(key, null);
@@ -159,7 +160,7 @@ public final class PlayerPreferences {
 	}
 
 	public void persistProgress(@Nullable String videoId, long position, long duration, TimeUnit unit) {
-		boolean enabled = extensionManager.isEnabled(Constant.REMEMBER_LAST_POSITION);
+		boolean enabled = extensionManager.isEnabled(AppConstants.REMEMBER_LAST_POSITION);
 		if (!enabled || videoId == null) return;
 		String key = PREFIX_PROGRESS + videoId;
 		String json = gson.toJson(new Progress(position, unit.toMillis(duration), System.currentTimeMillis()));
@@ -184,6 +185,15 @@ public final class PlayerPreferences {
 		mmkv.encode(PREFIX_ADAPTIVE_MUXED_FALLBACK + videoId, System.currentTimeMillis());
 	}
 
+	@Nullable
+	public String getLastSuccessClient() {
+		return mmkv.decodeString(KEY_LAST_SUCCESS_CLIENT, null);
+	}
+
+	public void setLastSuccessClient(@Nullable String clientName) {
+		mmkv.encode(KEY_LAST_SUCCESS_CLIENT, clientName);
+	}
+
 	@NonNull
 	public MiniPlayerLayoutState getMiniPlayerLayoutState() {
 		return new MiniPlayerLayoutState(
@@ -203,15 +213,12 @@ public final class PlayerPreferences {
 	@NonNull
 	public Set<String> getSponsorBlockCategories() {
 		Set<String> categories = new HashSet<>();
-		if (extensionManager.isEnabled(Constant.SKIP_SPONSORS)) categories.add("sponsor");
-		if (extensionManager.isEnabled(Constant.SKIP_SELF_PROMO)) categories.add("selfpromo");
-		if (extensionManager.isEnabled(Constant.SKIP_POI_HIGHLIGHT)) categories.add("poi_highlight");
+		if (extensionManager.isEnabled(AppConstants.SKIP_SPONSORS)) categories.add("sponsor");
+		if (extensionManager.isEnabled(AppConstants.SKIP_SELF_PROMO)) categories.add("selfpromo");
+		if (extensionManager.isEnabled(AppConstants.SKIP_POI_HIGHLIGHT)) categories.add("poi_highlight");
 		return categories;
 	}
 
-/**
- * Component that handles app logic.
- */
 	@Data
 	@AllArgsConstructor
 	@NoArgsConstructor

@@ -22,7 +22,8 @@ import java.util.List;
 @OptIn(markerClass = UnstableApi.class)
 class YoutubeDashLiveManifestParser extends DashManifestParser {
 
-	@SuppressWarnings("ParameterNumber")
+	// Parameter list mirrors the parent {@link DashManifestParser#buildMediaPresentationDescription}
+	// signature; it cannot be narrowed without breaking the override contract.
 	@NonNull
 	@Override
 	protected DashManifest buildMediaPresentationDescription(

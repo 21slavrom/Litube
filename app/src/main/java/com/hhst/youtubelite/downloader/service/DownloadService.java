@@ -19,7 +19,7 @@ import androidx.media3.common.util.UnstableApi;
 import com.hhst.youtubelite.R;
 import com.hhst.youtubelite.downloader.core.DownloadTaskIdHelper;
 import com.hhst.youtubelite.downloader.core.LiteDownloader;
-import com.hhst.youtubelite.downloader.core.ProgressCallback2;
+import com.hhst.youtubelite.downloader.core.ProgressCallback;
 import com.hhst.youtubelite.downloader.core.Task;
 import com.hhst.youtubelite.downloader.core.history.DownloadHistoryRepository;
 import com.hhst.youtubelite.downloader.core.history.DownloadRecord;
@@ -123,9 +123,19 @@ public class DownloadService extends Service {
 		String taskId = task.videoId();
 		DownloadType type = inferType(task);
 		File expectedOut = expectedOutputFile(task, type);
-		long now = System.currentTimeMillis();
+		createDownloadRecord(task, taskId, type, expectedOut);
+		registerProgressCallback(taskId, task);
+		downloader.download(task);
+	}
 
-		// Keep the record in sync before the download callbacks start.
+	/**
+	 * Creates or refreshes the {@link DownloadRecord} for a task before download
+	 * callbacks start firing. Keeps the record in sync with history, broadcasts
+	 * the update, and registers the task in the active set.
+	 */
+	private void createDownloadRecord(@NonNull Task task, @NonNull String taskId,
+	                                  @NonNull DownloadType type, @NonNull File expectedOut) {
+		long now = System.currentTimeMillis();
 		DownloadRecord prev = historyRepository.findByTaskId(taskId);
 		long createdAt = prev != null ? prev.getCreatedAt() : now;
 		DownloadRecord record = new DownloadRecord();
@@ -148,8 +158,14 @@ public class DownloadService extends Service {
 		updateParentRecord(record.getParentId());
 		activeIds.add(taskId);
 		activeNames.put(taskId, task.fileName());
+	}
 
-		downloader.setCallback(taskId, new ProgressCallback2() {
+	/**
+	 * Wires the downloader's progress/complete/error/cancel/merge callbacks for
+	 * a task to the service's record-update and notification helpers.
+	 */
+	private void registerProgressCallback(@NonNull String taskId, @NonNull Task task) {
+		downloader.setCallback(taskId, new ProgressCallback() {
 			@Override
 			public void onProgress(int progress, long downloaded, long total) {
 				updateRecordProgress(taskId, progress, downloaded, total, DownloadStatus.RUNNING);
@@ -187,7 +203,6 @@ public class DownloadService extends Service {
 				updateNotificationMerging(task.fileName());
 			}
 		});
-		downloader.download(task);
 	}
 
 	public void cancel(@NonNull String taskId) {

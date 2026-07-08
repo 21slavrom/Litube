@@ -85,6 +85,17 @@ public final class PlaybackPlanner {
 	@Nullable
 	public static PlaybackPlan muxedFallbackPlan(@NonNull DeliveryCatalog deliveries,
 	                                             @Nullable String preferredQuality) {
+		return muxedFallbackPlan(deliveries, preferredQuality, candidate -> false);
+	}
+
+	/**
+	 * Selects a muxed (progressive) playback plan, excluding any candidate whose key matches the
+	 * {@code blocked} predicate. Used by playback recovery to skip a muxed URL that already 403'd.
+	 */
+	@Nullable
+	public static PlaybackPlan muxedFallbackPlan(@NonNull DeliveryCatalog deliveries,
+	                                             @Nullable String preferredQuality,
+	                                             @NonNull java.util.function.Predicate<StreamCandidate> blocked) {
 		Delivery muxed = deliveries.first(PlaybackMode.MUXED);
 		if (muxed == null) {
 			return null;
@@ -94,7 +105,9 @@ public final class PlaybackPlanner {
 		plan.setStreamType(deliveries.getStreamType());
 		plan.setMode(PlaybackMode.MUXED);
 		plan.setDelivery(muxed);
-		plan.setMuxedCandidate(findVideoCandidate(muxed.getMuxed(), selected));
+		plan.setMuxedCandidate(findVideoCandidate(muxed.getMuxed().stream()
+						.filter(candidate -> !blocked.test(candidate))
+						.collect(Collectors.toList()), selected));
 		return plan.getMuxedCandidate() != null ? plan : null;
 	}
 

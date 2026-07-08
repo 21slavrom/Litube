@@ -16,6 +16,8 @@ import java.nio.charset.StandardCharsets;
  */
 public final class StreamIOUtils {
 
+	private static final String TAG = "StreamIOUtils";
+
 	/**
 	 * Reads an input stream into a string using UTF-8 encoding.
 	 *
@@ -27,7 +29,7 @@ public final class StreamIOUtils {
 		try (inputStream) {
 			return IOUtils.toString(inputStream, StandardCharsets.UTF_8);
 		} catch (IOException e) {
-			Log.e("StreamIOUtils", "Error reading input stream", e);
+			Log.e(TAG, "Error reading input stream", e);
 			return null;
 		}
 	}
@@ -43,7 +45,7 @@ public final class StreamIOUtils {
 		try (inputStream) {
 			return IOUtils.toByteArray(inputStream);
 		} catch (IOException e) {
-			Log.e("StreamIOUtils", "Error reading input stream to bytes", e);
+			Log.e(TAG, "Error reading input stream to bytes", e);
 			return new byte[0];
 		}
 	}

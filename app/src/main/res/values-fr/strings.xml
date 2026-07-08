@@ -14,19 +14,13 @@
     <string name="audio_only">Audio</string>
     <string name="close">Fermer</string>
     <string name="save">Sauvegarder</string>
-    <string name="share">Partager</string>
-    <string name="share_thumbnail">Partager la miniature</string>
-    <string name="extension">Extension</string>
-    <string name="request_restart">Redémarrer pour appliquer les modifications</string>
-    <string name="restart">Redémarrer</string>
+    <string name="share">Partager</string>    <string name="extension">Extension</string>
     <string name="display_dislikes">Afficher les dislikes</string>
     <string name="hide_shorts">Masquer les shorts</string>
     <string name="action_pause">Pause</string>
     <string name="action_play">Lecture</string>
     <string name="action_previous">Passer au précédent</string>
-    <string name="action_next">Passer au suivant</string>
-    <string name="general">Apparence</string>
-    <string name="player">Lecture</string>
+    <string name="action_next">Passer au suivant</string>    <string name="player">Lecture</string>
     <string name="sponsorblock">SponsorBlock</string>
     <string name="skip_sponsors">Ignorer les sponsors</string>
     <string name="skip_sponsors_selfpromo">Ignorer l\'auto-promotion</string>
@@ -80,7 +74,7 @@
     <string name="application_not_found">Application non trouvée</string>
     <string name="press_back_again_to_exit">Appuyez à nouveau sur retour pour quitter</string>
     <string name="threads">Threads</string>
-    <string name="app_description">Un wrapper webview avancé pour YouTube.</string>
+    <string name="app_description">Un wrapper WebView avancé pour YouTube.</string>
     <string name="source_code">Code source</string>
     <string name="clear_cache">Effacer le cache</string>
     <string name="export_error_log">Exporter le journal d\'erreurs</string>
@@ -130,9 +124,7 @@
     <string name="no_queue_items">Aucun élément dans la file</string>
     <string name="queue_unknown_author">Auteur inconnu</string>
     <string name="queue_now_playing">En cours de lecture</string>
-    <string name="queue_download_unavailable">Aucun élément de file disponible à télécharger</string>
-    <string name="player_gestures">Gestes du lecteur</string>
-    <string name="action_replay">Rejouer</string>
+    <string name="queue_download_unavailable">Aucun élément de file disponible à télécharger</string>    <string name="action_replay">Rejouer</string>
     <string name="action_restore_watch">Retour à la vidéo</string>
     <string name="playback_end_next">Lire le suivant</string>
     <string name="playback_end_loop">Boucler la vidéo</string>
@@ -176,4 +168,40 @@
     <string name="playlist_download_batch_segment_partial">%1$d partiel(s)</string>
     <string name="playlist_download_batch_segment_failed">%1$d échec(s)</string>
     <string name="playlist_download_started">Téléchargement de la liste de lecture lancé</string>
+    <string name="open_with">Ouvrir avec</string>
+    <string name="interface_category">Interface</string>
+    <string name="interface_summary">Afficher les dislikes, masquer les Shorts</string>    <string name="set_as_default_app_title">Ouvrir les liens par défaut</string>
+    <string name="set_as_default_app_message">Android ne fera pas automatiquement de Litube l\'application par défaut pour les liens YouTube. Ouvrez les paramètres des applications système, activez \"Ouvrir par défaut\" et approuvez les liens pris en charge pour permettre à Litube de gérer les URL YouTube.</string>
+    <string name="open_settings">Ouvrir les paramètres</string>
+    <string name="cast">Diffuser</string>
+    <string name="casting_to">Diffusion vers %1$s</string>    <string name="cast_stop">Arrêter la diffusion</string>
+    <string name="cast_connected_start_video">Diffusion connectée — lancez une vidéo</string>
+    <string name="cast_no_stream">Aucun flux diffusable pour cette vidéo</string>    <string name="cast_failed">Échec de la diffusion</string>
+    <string name="cast_disconnect">Déconnecter</string>    <string name="cast_no_devices_found">Aucun appareil Cast trouvé</string>
+    <string name="cast_no_devices_hint">Assurez-vous que la diffusion est configurée sur le même réseau.</string>
+    <string name="cast_unavailable">Diffusion indisponible</string>
+    <string name="cast_unavailable_hint">La diffusion nécessite Google Play Services. La lecture dans le navigateur reste disponible.</string>
+    <string name="cast_learn_casting">En savoir plus sur la diffusion</string>
+    <string name="cast_section_devices">Appareils disponibles</string>
+    <string name="cast_section_connected">Appareils connectés</string>
+    <string name="cast_section_link">Ouvrir sur n\'importe quel appareil</string>
+    <string name="cast_link_connected">Lien ouvert dans le navigateur</string>
+    <string name="cast_link_close">Fermer le lien</string>
+    <string name="cast_link_banner">Diffusion via lien</string>
+    <string name="playback_summary">Position, qualité, vitesse, mode de redimensionnement</string>
+    <string name="gesture">Gestes</string>
+    <string name="gesture_summary">Tapotements, navigation, plein écran</string>
+    <string name="gesture_single_tap">Simple tap</string>
+    <string name="gesture_double_tap">Double tap</string>
+    <string name="gesture_long_press_speed">Appui long 2x</string>
+    <string name="gesture_seek">Balayage pour chercher</string>
+    <string name="gesture_fullscreen_swipe">Entrer/sortir du plein écran</string>
+    <string name="enable_in_windowed">Activer en mode fenêtré</string>
+    <string name="enable_in_fullscreen">Activer en plein écran</string>
+    <string name="background_mini_player">Arrière-plan &amp; Mini-lecteur</string>
+    <string name="background_mini_player_summary">PiP, mini-lecteur, lecture en arrière-plan</string>
+    <string name="sponsorblock_summary">Sponsors, auto-promo, moments forts</string>
+    <string name="brightness">Luminosité</string>
+    <string name="volume">Volume</string>
+    <string name="reset_all_settings">Réinitialiser tous les paramètres</string>
 </resources>

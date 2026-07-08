@@ -14,7 +14,7 @@ import androidx.annotation.NonNull;
 import androidx.media3.common.util.UnstableApi;
 
 import com.hhst.youtubelite.R;
-import com.hhst.youtubelite.extension.Constant;
+import com.hhst.youtubelite.extension.PreferenceKeys;
 import com.hhst.youtubelite.player.LitePlayerView;
 import com.hhst.youtubelite.player.controller.Controller;
 import com.hhst.youtubelite.player.engine.Engine;
@@ -64,15 +64,22 @@ public class PlayerGestureListener extends GestureDetector.SimpleOnGestureListen
 	}
 
 	private boolean enabled(@NonNull Gesture gesture) {
+		// While casting the phone is a remote: only tap (show/hide controls) and
+		// double-tap center (toggle playback) are meaningful. Brightness/volume
+		// adjust the phone locally (irrelevant), seek/long-press/fullscreen target
+		// the local surface or rely on APIs the receiver ignores.
+		if (controller.isCasting() && gesture != Gesture.TAP && gesture != Gesture.DOUBLE_TAP) {
+			return false;
+		}
 		boolean fullscreen = controller.isFullscreen();
 		String key = switch (gesture) {
-			case TAP -> fullscreen ? Constant.GESTURE_TAP_FULLSCREEN : Constant.GESTURE_TAP_WINDOWED;
-			case DOUBLE_TAP -> fullscreen ? Constant.GESTURE_DOUBLE_TAP_FULLSCREEN : Constant.GESTURE_DOUBLE_TAP_WINDOWED;
-			case LONG_PRESS -> fullscreen ? Constant.GESTURE_LONG_PRESS_FULLSCREEN : Constant.GESTURE_LONG_PRESS_WINDOWED;
-			case BRIGHTNESS -> fullscreen ? Constant.GESTURE_BRIGHTNESS_FULLSCREEN : Constant.GESTURE_BRIGHTNESS_WINDOWED;
-			case VOLUME -> fullscreen ? Constant.GESTURE_VOLUME_FULLSCREEN : Constant.GESTURE_VOLUME_WINDOWED;
-			case SEEK -> fullscreen ? Constant.GESTURE_SEEK_FULLSCREEN : Constant.GESTURE_SEEK_WINDOWED;
-			case FULLSCREEN -> fullscreen ? Constant.GESTURE_FULLSCREEN_FULLSCREEN : Constant.GESTURE_FULLSCREEN_WINDOWED;
+			case TAP -> fullscreen ? PreferenceKeys.GESTURE_TAP_FULLSCREEN : PreferenceKeys.GESTURE_TAP_WINDOWED;
+			case DOUBLE_TAP -> fullscreen ? PreferenceKeys.GESTURE_DOUBLE_TAP_FULLSCREEN : PreferenceKeys.GESTURE_DOUBLE_TAP_WINDOWED;
+			case LONG_PRESS -> fullscreen ? PreferenceKeys.GESTURE_LONG_PRESS_FULLSCREEN : PreferenceKeys.GESTURE_LONG_PRESS_WINDOWED;
+			case BRIGHTNESS -> fullscreen ? PreferenceKeys.GESTURE_BRIGHTNESS_FULLSCREEN : PreferenceKeys.GESTURE_BRIGHTNESS_WINDOWED;
+			case VOLUME -> fullscreen ? PreferenceKeys.GESTURE_VOLUME_FULLSCREEN : PreferenceKeys.GESTURE_VOLUME_WINDOWED;
+			case SEEK -> fullscreen ? PreferenceKeys.GESTURE_SEEK_FULLSCREEN : PreferenceKeys.GESTURE_SEEK_WINDOWED;
+			case FULLSCREEN -> fullscreen ? PreferenceKeys.GESTURE_FULLSCREEN_FULLSCREEN : PreferenceKeys.GESTURE_FULLSCREEN_WINDOWED;
 		};
 		return controller.getExtensionManager().isEnabled(key);
 	}

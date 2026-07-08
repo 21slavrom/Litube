@@ -57,9 +57,6 @@ public final class ExtractionSession {
 		}
 	}
 
-/**
- * Contract for app logic.
- */
 	@FunctionalInterface
 	public interface Cancellable {
 		void cancel();

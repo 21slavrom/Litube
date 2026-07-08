@@ -1,11 +1,12 @@
 package com.hhst.youtubelite.util;
 
 import android.net.Uri;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.hhst.youtubelite.Constant;
+import com.hhst.youtubelite.AppConstants;
 
 import java.net.URI;
 import java.util.List;
@@ -17,10 +18,11 @@ import java.util.Set;
  */
 public final class UrlUtils {
 
+	private static final String TAG = "UrlUtils";
 	private static final Locale NORMAL_LOCALE = Locale.ROOT;
 
 	private static final Set<String> ALLOWED_DOMAINS = Set.of(
-					Constant.YOUTUBE_DOMAIN,
+					AppConstants.YOUTUBE_DOMAIN,
 					"youtu.be",
 					"youtube.googleapis.com",
 					"googlevideo.com",
@@ -41,7 +43,8 @@ public final class UrlUtils {
 		if (url == null || url.isEmpty()) return false;
 		try {
 			return isAllowedHost(URI.create(url).getHost());
-		} catch (IllegalArgumentException ignored) {
+		} catch (IllegalArgumentException e) {
+			Log.d(TAG, "isAllowedUrl: malformed URL", e);
 			return false;
 		}
 	}
@@ -51,7 +54,8 @@ public final class UrlUtils {
 		if (url == null || url.isBlank()) return null;
 		try {
 			return externalUri(Uri.parse(url));
-		} catch (RuntimeException ignored) {
+		} catch (RuntimeException e) {
+			Log.d(TAG, "externalUri: malformed URL", e);
 			return null;
 		}
 	}
@@ -73,7 +77,8 @@ public final class UrlUtils {
 		Uri targetUri;
 		try {
 			targetUri = Uri.parse(target);
-		} catch (RuntimeException ignored) {
+		} catch (RuntimeException e) {
+			Log.d(TAG, "externalUri: malformed redirect target", e);
 			return null;
 		}
 		String scheme = targetUri.getScheme();
@@ -86,7 +91,8 @@ public final class UrlUtils {
 		try {
 			String host = URI.create(url).getHost();
 			return host != null && isGoogleAccountsHost(host.toLowerCase(NORMAL_LOCALE));
-		} catch (IllegalArgumentException ignored) {
+		} catch (IllegalArgumentException e) {
+			Log.d(TAG, "isGoogleAccountsUrl: malformed URL", e);
 			return false;
 		}
 	}
@@ -98,7 +104,8 @@ public final class UrlUtils {
 			if (listId == null || listId.isBlank()) return false;
 			String index = getQueryParameter(url, "index");
 			return index == null || index.isBlank() || "1".equals(index);
-		} catch (Exception ignored) {
+		} catch (Exception e) {
+			Log.d(TAG, "isPlaylistFirstItemUrl: malformed URL", e);
 			return false;
 		}
 	}
@@ -108,7 +115,8 @@ public final class UrlUtils {
 		String query;
 		try {
 			query = URI.create(url).getRawQuery();
-		} catch (IllegalArgumentException ignored) {
+		} catch (IllegalArgumentException e) {
+			Log.d(TAG, "getQueryParameter: malformed URL", e);
 			return null;
 		}
 		if (query == null || query.isBlank()) return null;
@@ -130,8 +138,8 @@ public final class UrlUtils {
 	}
 
 	private static boolean isYoutubeHost(@NonNull String lowerHost) {
-		return lowerHost.equals(Constant.YOUTUBE_DOMAIN)
-						|| lowerHost.endsWith("." + Constant.YOUTUBE_DOMAIN);
+		return lowerHost.equals(AppConstants.YOUTUBE_DOMAIN)
+						|| lowerHost.endsWith("." + AppConstants.YOUTUBE_DOMAIN);
 	}
 
 	private static boolean isGoogleAccountsHost(@NonNull String lowerHost) {
@@ -156,7 +164,8 @@ public final class UrlUtils {
 							.filter(segment -> !segment.isEmpty())
 							.toList();
 			return getPageClassFromHost(host, segments);
-		} catch (IllegalArgumentException ignored) {
+		} catch (IllegalArgumentException e) {
+			Log.d(TAG, "getPageClass: malformed URL", e);
 			return "unknown";
 		}
 	}
@@ -165,26 +174,26 @@ public final class UrlUtils {
 	static String getPageClassFromHost(@NonNull String host, @NonNull List<String> segments) {
 		String lowerHost = host.toLowerCase(NORMAL_LOCALE);
 		if (lowerHost.equals("youtu.be")) {
-			return segments.isEmpty() ? "unknown" : Constant.PAGE_WATCH;
+			return segments.isEmpty() ? "unknown" : AppConstants.PAGE_WATCH;
 		}
-		if (!lowerHost.equals(Constant.YOUTUBE_MOBILE_HOST) && !lowerHost.equals(Constant.YOUTUBE_DOMAIN))
+		if (!lowerHost.equals(AppConstants.YOUTUBE_MOBILE_HOST) && !lowerHost.equals(AppConstants.YOUTUBE_DOMAIN))
 			return "unknown";
 
-		if (segments.isEmpty()) return Constant.PAGE_HOME;
+		if (segments.isEmpty()) return AppConstants.PAGE_HOME;
 
-		String s0 = segments.get(0).toLowerCase(NORMAL_LOCALE);
-		if (s0.startsWith("@")) return "@";
+		String firstSegment = segments.get(0).toLowerCase(NORMAL_LOCALE);
+		if (firstSegment.startsWith("@")) return "@";
 
-		return switch (s0) {
-			case "shorts" -> Constant.PAGE_SHORTS;
-			case "watch" -> Constant.PAGE_WATCH;
+		return switch (firstSegment) {
+			case "shorts" -> AppConstants.PAGE_SHORTS;
+			case "watch" -> AppConstants.PAGE_WATCH;
 			case "channel" -> "channel";
 			case "gaming" -> "gaming";
 			case "select_site" -> "select_site";
 			case "results" -> "searching";
 			case "feed" -> (segments.size() > 1) ? switch (segments.get(1).toLowerCase(NORMAL_LOCALE)) {
-				case "subscriptions" -> Constant.PAGE_SUBSCRIPTIONS;
-				case "library" -> Constant.PAGE_LIBRARY;
+				case "subscriptions" -> AppConstants.PAGE_SUBSCRIPTIONS;
+				case "library" -> AppConstants.PAGE_LIBRARY;
 				case "history" -> "history";
 				case "channels" -> "channels";
 				case "playlists" -> "playlists";

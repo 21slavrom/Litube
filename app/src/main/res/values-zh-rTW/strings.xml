@@ -15,20 +15,14 @@
     <string name="close">關閉</string>
     <string name="save">保存</string>
     <string name="share">分享</string>
-    <string name="open_with">開啟方式</string>
-    <string name="share_thumbnail">分享封面</string>
-    <string name="extension">擴充功能</string>
-    <string name="request_restart">重啟以應用更改</string>
-    <string name="restart">重啟</string>
+    <string name="open_with">開啟方式</string>    <string name="extension">擴充功能</string>
     <string name="display_dislikes">顯示點踩數</string>
     <string name="hide_shorts">隱藏 Shorts</string>
     <string name="action_pause">暫停</string>
     <string name="action_play">播放</string>
     <string name="action_replay">重新播放</string>
     <string name="action_previous">上一個</string>
-    <string name="action_next">下一個</string>
-    <string name="general">外觀</string>
-    <string name="interface_category">介面</string>
+    <string name="action_next">下一個</string>    <string name="interface_category">介面</string>
     <string name="interface_summary">顯示點踩數，隱藏 Shorts</string>
     <string name="player">播放</string>
     <string name="playback_summary">進度、畫質、倍速、縮放模式</string>
@@ -154,9 +148,7 @@
     <string name="no_queue_items">暫無佇列內容</string>
     <string name="queue_unknown_author">未知作者</string>
     <string name="queue_now_playing">正在播放</string>
-    <string name="queue_download_unavailable">目前沒有可下載的佇列內容</string>
-    <string name="player_gestures">播放手勢</string>
-    <string name="action_restore_watch">返回影片</string>
+    <string name="queue_download_unavailable">目前沒有可下載的佇列內容</string>    <string name="action_restore_watch">返回影片</string>
     <string name="in_app_mini_player">應用內小窗</string>
     <string name="status_downloading_simple">下載中</string>
     <string name="type_playlist">播放清單</string>
@@ -194,5 +186,22 @@
     <string name="playlist_download_batch_added_before_cancel">取消前已新增 %1$d 項</string>
     <string name="playlist_download_batch_segment_partial">%1$d 個部分成功</string>
     <string name="playlist_download_batch_segment_failed">%1$d 個失敗</string>
-    <string name="playlist_download_started">播放清單下載已開始</string>
+    <string name="playlist_download_started">播放清單下載已開始</string>    <string name="set_as_default_app_title">預設開啟連結</string>
+    <string name="set_as_default_app_message">Android 不會自動將 Litube 設為 YouTube 連結的預設應用程式。請開啟系統應用程式設定，啟用\"預設開啟\"並核准支援的連結，讓 Litube 處理 YouTube 網址。</string>
+    <string name="open_settings">開啟設定</string>
+    <string name="cast">投屏</string>
+    <string name="casting_to">正在投屏到 %1$s</string>    <string name="cast_stop">停止投屏</string>
+    <string name="cast_connected_start_video">已連接投屏 — 請開始播放影片</string>
+    <string name="cast_no_stream">此影片無可投屏的串流</string>    <string name="cast_failed">投屏失敗</string>
+    <string name="cast_disconnect">中斷連線</string>    <string name="cast_no_devices_found">未發現投屏裝置</string>
+    <string name="cast_no_devices_hint">請確保投屏裝置已連接同一網路。</string>
+    <string name="cast_unavailable">無法使用投屏</string>
+    <string name="cast_unavailable_hint">投屏需要 Google Play 服務，瀏覽器播放仍可用。</string>
+    <string name="cast_learn_casting">瞭解投屏</string>
+    <string name="cast_section_devices">可用裝置</string>
+    <string name="cast_section_connected">已連接裝置</string>
+    <string name="cast_section_link">在任意裝置開啟</string>
+    <string name="cast_link_connected">連結投屏已開啟</string>
+    <string name="cast_link_close">關閉連結</string>
+    <string name="cast_link_banner">正在透過連結投屏</string>
 </resources>

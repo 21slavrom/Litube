@@ -111,9 +111,6 @@ public class ImageFragment extends Fragment {
 		}
 	}
 
-/**
- * Component that handles app logic.
- */
 	private static final class GestureContainer extends FrameLayout {
 		private final GestureDetector detector;
 		private Runnable tap;

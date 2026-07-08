@@ -1,9 +1,11 @@
 package com.hhst.youtubelite.extractor;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.hhst.youtubelite.Constant;
+import com.hhst.youtubelite.AppConstants;
 
 import java.net.URI;
 import java.security.MessageDigest;
@@ -19,6 +21,9 @@ import java.util.Map;
  * Builds YouTube auth headers from the current session snapshot.
  */
 public final class YoutubeAuth {
+
+	private static final String TAG = "YoutubeAuth";
+
 	private YoutubeAuth() {
 	}
 
@@ -68,13 +73,14 @@ public final class YoutubeAuth {
 				return false;
 			}
 			String lowerHost = host.toLowerCase(Locale.US);
-			if (!lowerHost.equals(Constant.YOUTUBE_DOMAIN)
-							&& !lowerHost.endsWith("." + Constant.YOUTUBE_DOMAIN)) {
+			if (!lowerHost.equals(AppConstants.YOUTUBE_DOMAIN)
+							&& !lowerHost.endsWith("." + AppConstants.YOUTUBE_DOMAIN)) {
 				return false;
 			}
 			String path = uri.getPath();
 			return path != null && path.startsWith("/youtubei/");
-		} catch (IllegalArgumentException ignored) {
+		} catch (IllegalArgumentException e) {
+			Log.d(TAG, "isWebApi: malformed URL: " + e.getMessage());
 			return false;
 		}
 	}
@@ -120,7 +126,8 @@ public final class YoutubeAuth {
 				return null;
 			}
 			return scheme + "://" + host;
-		} catch (IllegalArgumentException ignored) {
+		} catch (IllegalArgumentException e) {
+			Log.d(TAG, "origin: malformed URL: " + e.getMessage());
 			return null;
 		}
 	}

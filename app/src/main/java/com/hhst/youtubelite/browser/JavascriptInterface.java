@@ -40,9 +40,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Component that handles app logic.
- */
 @UnstableApi
 public final class JavascriptInterface {
 	private static final String TAG = "JavascriptInterface";
@@ -81,7 +78,8 @@ public final class JavascriptInterface {
 		if (normalized == null) return null;
 		try {
 			return MediaItemMenuPayload.fromJson(normalized);
-		} catch (RuntimeException ignored) {
+		} catch (RuntimeException e) {
+			Log.d(TAG, "parseMediaItemMenuPayload: failed to parse payload", e);
 			return null;
 		}
 	}
@@ -102,7 +100,8 @@ public final class JavascriptInterface {
 			try {
 				String value = object.get(key).getAsString();
 				if (value != null && !value.isBlank()) return value;
-			} catch (Exception ignored) {
+			} catch (Exception e) {
+				Log.d(TAG, "getPayloadString: failed to extract string value", e);
 			}
 		}
 		return null;
@@ -125,7 +124,8 @@ public final class JavascriptInterface {
 					return Math.max(0L, seconds);
 				}
 				return Math.max(0L, Long.parseLong(trimmed));
-			} catch (Exception ignored) {
+			} catch (Exception e) {
+				Log.d(TAG, "getPayloadLong: failed to parse numeric value", e);
 			}
 		}
 		return 0L;

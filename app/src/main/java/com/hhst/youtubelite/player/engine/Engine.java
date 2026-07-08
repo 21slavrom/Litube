@@ -27,7 +27,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.exoplayer.trackselection.AdaptiveTrackSelection;
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
 
-import com.hhst.youtubelite.Constant;
+import com.hhst.youtubelite.AppConstants;
 import com.hhst.youtubelite.browser.TabManager;
 import com.hhst.youtubelite.extractor.Delivery;
 import com.hhst.youtubelite.extractor.DeliveryCatalog;
@@ -83,6 +83,8 @@ public class Engine {
 	@NonNull
 	private final ExoPlayer player;
 	@NonNull
+	private final LitePlayerView playerView;
+	@NonNull
 	private final PlayerPreferences prefs;
 	@NonNull
 	private final TabManager tabManager;
@@ -97,27 +99,36 @@ public class Engine {
 	private PlayerLoopMode loopMode = PlayerLoopMode.PLAYLIST_NEXT;
 	@Nullable
 	private String videoId;
+	/**
+	 * UI-thread 1-second tick that persists playback progress, skips sponsor segments, and
+	 * re-arms itself via {@link Handler#postDelayed}. Kept on a {@link Handler} rather than
+	 * migrated to a coroutine because every operation here is non-blocking and must run on
+	 * the main thread (ExoPlayer position queries, {@code prefs.persistProgress}, sponsor
+	 * checks). Coroutines would add dispatch overhead without any concurrency benefit.
+	 */
 	private final Runnable onTimeUpdate = new Runnable() {
 		@Override
 		public void run() {
-			if (!player.isPlaying()) return;
-			long pos = player.getCurrentPosition();
-			long duration = player.getDuration();
-			// Persist playback progress.
-			if (videoId != null && duration > 0 && prefs.getExtensionManager().isEnabled(Constant.REMEMBER_LAST_POSITION)) {
-				if (pos > SAFE_ZONE_MS && pos < duration - SAFE_ZONE_MS) {
-					prefs.persistProgress(videoId, pos, duration, TimeUnit.MILLISECONDS);
+			// Cast active: local player is paused, skip progress/sponsor work.
+			if (castDelegate == null && player.isPlaying()) {
+				long pos = player.getCurrentPosition();
+				long duration = player.getDuration();
+				// Persist playback progress.
+				if (videoId != null && duration > 0 && prefs.getExtensionManager().isEnabled(AppConstants.REMEMBER_LAST_POSITION)) {
+					if (pos > SAFE_ZONE_MS && pos < duration - SAFE_ZONE_MS) {
+						prefs.persistProgress(videoId, pos, duration, TimeUnit.MILLISECONDS);
+					}
 				}
-			}
-			// Skip sponsor segments.
-			List<long[]> segments = sponsor.getSegments();
-			for (final long[] segment : segments) {
-				if (pos >= segment[0] && pos < segment[1]) {
-					player.seekTo(segment[1]);
-					break;
+				// Skip sponsor segments.
+				List<long[]> segments = sponsor.getSegments();
+				for (final long[] segment : segments) {
+					if (pos >= segment[0] && pos < segment[1]) {
+						player.seekTo(segment[1]);
+						break;
+					}
 				}
+				handler.postDelayed(this, 1000);
 			}
-			handler.postDelayed(this, 1000);
 		}
 	};
 	@Nullable
@@ -134,8 +145,18 @@ public class Engine {
 	private PlaybackPlan playbackPlan;
 	@Nullable
 	private VideoStream videoStream;
+	private boolean qualityManuallySelected;
+	private boolean reExtractionAttempted;
 	@NonNull
 	private final Set<String> failedAdaptiveCandidates = new HashSet<>();
+	/**
+	 * When non-null, playback control is forwarded to this remote CastPlayer
+	 * instead of the local ExoPlayer (phone acts as a TV remote).
+	 */
+	@Nullable
+	private Player castDelegate;
+	@NonNull
+	private final List<Player.Listener> externalListeners = new ArrayList<>();
 
 	@Inject
 	public Engine(@NonNull @ApplicationContext Context context,
@@ -146,6 +167,7 @@ public class Engine {
 	              @NonNull SponsorBlockManager sponsor,
 	              @NonNull QueueRepository queueRepository) {
 		this.prefs = prefs;
+		this.playerView = playerView;
 		this.tabManager = tabManager;
 		this.sponsor = sponsor;
 		this.queueRepository = queueRepository;
@@ -170,6 +192,9 @@ public class Engine {
 
 			@Override
 			public void onPlaybackStateChanged(int state) {
+				if (state == Player.STATE_READY) {
+					recordSuccessClient();
+				}
 				if (state == Player.STATE_ENDED) {
 					if (isShortVideo()) {
 						player.seekTo(0);
@@ -222,6 +247,28 @@ public class Engine {
 			return plan.getAudioCandidate().getAudioStream();
 		}
 		return null;
+	}
+
+	/**
+	 * Records the source client of the current playback plan as the last successful client,
+	 * so the next extraction prefers it via {@link YoutubeStreamExtractor.ClientOrderer}.
+	 */
+	private void recordSuccessClient() {
+		PlaybackPlan plan = playbackPlan;
+		if (plan == null) return;
+		String client = null;
+		if (plan.getVideoCandidate() != null) {
+			client = plan.getVideoCandidate().getSourceClient();
+		}
+		if (client == null && plan.getMuxedCandidate() != null) {
+			client = plan.getMuxedCandidate().getSourceClient();
+		}
+		if (client == null && plan.getAudioCandidate() != null) {
+			client = plan.getAudioCandidate().getSourceClient();
+		}
+		if (client != null && !client.isBlank()) {
+			prefs.setLastSuccessClient(client);
+		}
 	}
 
 	private static long durationMs(@NonNull VideoDetails details) {
@@ -320,7 +367,8 @@ public class Engine {
 	}
 
 	public boolean isPlaying() {
-		return this.player.isPlaying();
+		Player delegate = castDelegate;
+		return delegate != null ? delegate.isPlaying() : this.player.isPlaying();
 	}
 
 	public boolean isCurrentVideoInQueue() {
@@ -334,6 +382,7 @@ public class Engine {
 		List<SubtitlesStream> subtitles = details.subtitles();
 		if (!Objects.equals(this.videoId, video.getId())) {
 			failedAdaptiveCandidates.clear();
+			reExtractionAttempted = false;
 		}
 		this.videoId = video.getId();
 		this.videoDetails = video;
@@ -357,7 +406,7 @@ public class Engine {
 		this.player.setPlaybackParameters(new PlaybackParameters(this.prefs.getSpeed()));
 
 		// Resume position
-		if (prefs.getExtensionManager().isEnabled(Constant.REMEMBER_LAST_POSITION)) {
+		if (prefs.getExtensionManager().isEnabled(AppConstants.REMEMBER_LAST_POSITION)) {
 			long resumePos = prefs.getResumePosition(videoId);
 			if (resumePos > SAFE_ZONE_MS && resumePos < duration - SAFE_ZONE_MS) {
 				this.player.seekTo(resumePos);
@@ -369,7 +418,12 @@ public class Engine {
 	}
 
 	public void play() {
-		this.player.play();
+		Player delegate = castDelegate;
+		if (delegate != null) {
+			delegate.play();
+		} else {
+			this.player.play();
+		}
 	}
 
 	public boolean recoverFromPlaybackError(@NonNull PlaybackException error) {
@@ -378,9 +432,45 @@ public class Engine {
 			return false;
 		}
 		State state = state();
-		if (state == null || state.plan().getMode() != PlaybackMode.ADAPTIVE) {
+		if (state == null) {
 			return false;
 		}
+		PlaybackMode mode = state.plan().getMode();
+		if (mode == PlaybackMode.ADAPTIVE) {
+			return recoverAdaptive(state, reason);
+		}
+		if (mode == PlaybackMode.MUXED) {
+			return recoverMuxed(state, reason);
+		}
+		return false;
+	}
+
+	/**
+	 * Returns true when local recovery is exhausted and the caller should re-extract a fresh
+	 * playback source (new signatures / po-tokens) and retry. Guarded by {@link #reExtractionAttempted}
+	 * so at most one re-extraction happens per video.
+	 */
+	public boolean shouldReExtract(@NonNull PlaybackException error) {
+		if (reExtractionAttempted) {
+			return false;
+		}
+		PlaybackRecoveryReason reason = playbackRecoveryReason(error);
+		if (reason != PlaybackRecoveryReason.HTTP_403) {
+			return false;
+		}
+		State state = state();
+		return state != null;
+	}
+
+	/**
+	 * Marks that a re-extraction attempt is in progress, preventing further re-extraction
+	 * for the same video until {@link #play(PlaybackDetails)} loads a new video.
+	 */
+	public void markReExtractionStarted() {
+		reExtractionAttempted = true;
+	}
+
+	private boolean recoverAdaptive(@NonNull State state, @NonNull PlaybackRecoveryReason reason) {
 		rememberFailedAdaptiveCandidates(state.plan());
 		PlaybackPlan adaptiveFallback = PlaybackPlanner.adaptiveFallbackPlan(
 						state.deliveries(),
@@ -397,6 +487,24 @@ public class Engine {
 			return false;
 		}
 		return recoverWithPlan(state, muxedFallback, reason, true);
+	}
+
+	private boolean recoverMuxed(@NonNull State state, @NonNull PlaybackRecoveryReason reason) {
+		// If MUXED is already 403, the WEB client's PoToken is likely invalid for all its streams.
+		// Don't try other muxed candidates (they share the same PoToken) — let the caller
+		// re-extract with a fresh token instead.
+		if (reason == PlaybackRecoveryReason.HTTP_403) {
+			return false;
+		}
+		rememberFailedAdaptiveCandidates(state.plan());
+		PlaybackPlan muxedFallback = PlaybackPlanner.muxedFallbackPlan(
+						state.deliveries(),
+						prefs.getPreferredQuality(),
+						this::isFailedAdaptiveCandidate);
+		if (muxedFallback != null) {
+			return recoverWithPlan(state, muxedFallback, reason, false);
+		}
+		return false;
 	}
 
 	private boolean recoverWithPlan(@NonNull State state,
@@ -432,8 +540,10 @@ public class Engine {
 	private void rememberFailedAdaptiveCandidates(@NonNull PlaybackPlan plan) {
 		String video = candidateKey(plan.getVideoCandidate());
 		String audio = candidateKey(plan.getAudioCandidate());
+		String muxed = candidateKey(plan.getMuxedCandidate());
 		if (video != null) failedAdaptiveCandidates.add(video);
 		if (audio != null) failedAdaptiveCandidates.add(audio);
+		if (muxed != null) failedAdaptiveCandidates.add(muxed);
 	}
 
 	private boolean isFailedAdaptiveCandidate(@NonNull StreamCandidate candidate) {
@@ -441,30 +551,98 @@ public class Engine {
 	}
 
 	public void pause() {
-		this.player.pause();
+		Player delegate = castDelegate;
+		if (delegate != null) {
+			delegate.pause();
+		} else {
+			this.player.pause();
+		}
 	}
 
 	public void seekTo(long pos) {
-		this.player.seekTo(Math.min(this.player.getDuration(), pos));
+		Player delegate = castDelegate;
+		if (delegate != null) {
+			delegate.seekTo(Math.min(delegate.getDuration(), pos));
+		} else {
+			this.player.seekTo(Math.min(this.player.getDuration(), pos));
+		}
 	}
 
 	public void seekBy(long offset) {
-		this.player.seekTo(Math.min(this.player.getDuration(), this.player.getCurrentPosition() + offset));
+		Player delegate = castDelegate;
+		if (delegate != null) {
+			delegate.seekTo(Math.min(delegate.getDuration(), delegate.getCurrentPosition() + offset));
+		} else {
+			this.player.seekTo(Math.min(this.player.getDuration(), this.player.getCurrentPosition() + offset));
+		}
 	}
 
 	public float getPlaybackRate() {
-		return this.player.getPlaybackParameters().speed;
+		Player delegate = castDelegate;
+		return delegate != null ? delegate.getPlaybackParameters().speed
+				: this.player.getPlaybackParameters().speed;
 	}
 
 	public void setPlaybackRate(float rate) {
-		this.player.setPlaybackParameters(new PlaybackParameters(rate));
+		Player delegate = castDelegate;
+		if (delegate != null) {
+			delegate.setPlaybackParameters(new PlaybackParameters(rate));
+		} else {
+			this.player.setPlaybackParameters(new PlaybackParameters(rate));
+		}
 	}
 
 	public void addListener(@NonNull Player.Listener listener) {
 		this.player.addListener(listener);
+		externalListeners.add(listener);
+		// Also observe the cast delegate for TV-side state.
+		Player delegate = castDelegate;
+		if (delegate != null) {
+			delegate.addListener(listener);
+		}
+	}
+
+	/**
+	 * Forwards playback control to {@code delegate} (the Chromecast CastPlayer)
+	 * and re-attaches all previously registered listeners to it, so the local
+	 * UI reflects TV-side play/pause/seek/progress state. The local ExoPlayer is
+	 * left paused; only control and state are mirrored. Pass {@code null} to
+	 * return control to the local ExoPlayer.
+	 */
+	public void setCastDelegate(@Nullable Player delegate) {
+		if (castDelegate == delegate) return;
+		if (castDelegate != null) {
+			for (Player.Listener listener : externalListeners) {
+				castDelegate.removeListener(listener);
+			}
+		}
+		castDelegate = delegate;
+		if (delegate != null) {
+			for (Player.Listener listener : externalListeners) {
+				delegate.addListener(listener);
+			}
+		}
+	}
+
+	/** Returns whether playback control is currently delegated to a cast player. */
+	public boolean isCastDelegateActive() {
+		return castDelegate != null;
+	}
+
+	/**
+	 * Rebinds the player view to the local ExoPlayer. Called after a cast session
+	 * ends to restore local rendering (the view was temporarily bound to the
+	 * CastPlayer for control/state mirroring while casting).
+	 */
+	public void bindLocalPlayer() {
+		playerView.setPlayer(this.player);
 	}
 
 	public VideoSize getVideoSize() {
+		// The local ExoPlayer has no video surface while casting; its reported size
+		// is stale and would mislead rotation/zoom decisions. Report unknown so the
+		// controller treats the surface as having no usable video dimensions.
+		if (castDelegate != null) return VideoSize.UNKNOWN;
 		return this.player.getVideoSize();
 	}
 
@@ -503,7 +681,13 @@ public class Engine {
 	}
 
 	public long position() {
-		return this.player.getCurrentPosition();
+		Player delegate = castDelegate;
+		return delegate != null ? delegate.getCurrentPosition() : this.player.getCurrentPosition();
+	}
+
+	public long duration() {
+		Player delegate = castDelegate;
+		return delegate != null ? delegate.getDuration() : this.player.getDuration();
 	}
 
 	public void skipToNext() {
@@ -618,6 +802,16 @@ public class Engine {
 		return new QueueNav(false, false, false, false, canGoBack);
 	}
 
+	/**
+	 * Returns the video id of the media currently loaded into the local ExoPlayer,
+	 * or {@code null} if none. Used to detect whether the loaded item changed
+	 * while casting (so {@code resumeFromCast} knows whether to reload).
+	 */
+	@Nullable
+	public String getVideoId() {
+		return videoId;
+	}
+
 	@Nullable
 	private String watchVideoId() {
 		String watchUrl = tabManager.getWatchUrl();
@@ -634,8 +828,8 @@ public class Engine {
 					return separator >= 0 ? pair.substring(separator + 1) : "";
 				}
 			}
-		} catch (IllegalArgumentException ignored) {
-			// Fall back to the cached engine id.
+		} catch (IllegalArgumentException e) {
+			Log.d(TAG, "extractVideoIdFromUrl: malformed URL, falling back to cached video id", e);
 		}
 		return videoId;
 	}
@@ -691,6 +885,7 @@ public class Engine {
 		if (res == null) return;
 		State state = state();
 		if (state == null) return;
+		qualityManuallySelected = true;
 		prefs.setPreferredQuality(res);
 		PlaybackPlan plan = PlaybackPlanner.plan(state.deliveries(), res, null);
 		this.playbackPlan = plan;
@@ -816,6 +1011,10 @@ public class Engine {
 		return preferredQuality == null ? "" : preferredQuality;
 	}
 
+	public boolean isQualityManuallySelected() {
+		return qualityManuallySelected;
+	}
+
 	public void setRepeatMode(int mode) {
 		this.player.setRepeatMode(mode);
 	}
@@ -826,7 +1025,8 @@ public class Engine {
 	}
 
 	public int getPlaybackState() {
-		return this.player.getPlaybackState();
+		Player delegate = castDelegate;
+		return delegate != null ? delegate.getPlaybackState() : this.player.getPlaybackState();
 	}
 
 	public boolean areSubtitlesEnabled() {
@@ -865,11 +1065,19 @@ public class Engine {
 	public List<StreamSegment> getSegments() {
 		if (!segments.isEmpty()) return segments;
 
-		// Create default segment with video title at 0 seconds
 		List<StreamSegment> segments = new ArrayList<>();
 		VideoDetails video = videoDetails;
 		if (video != null) segments.add(new StreamSegment(video.getTitle() != null ? video.getTitle() : "", 0));
 		return segments;
+	}
+
+	/**
+	 * Replaces the chapter segments after a delayed {@code /next} response arrives. Safe to
+	 * call after playback has started; the UI refreshes the timeline markers on the main thread.
+	 */
+	public void updateSegments(@NonNull List<StreamSegment> updated) {
+		if (updated.isEmpty()) return;
+		this.segments = updated;
 	}
 
 	@Nullable
@@ -991,6 +1199,13 @@ public class Engine {
 		handler.removeCallbacks(onTimeUpdate);
 		this.player.stop();
 		this.player.clearMediaItems();
+		// Also stop the receiver when switching videos while casting.
+		Player delegate = castDelegate;
+		if (delegate != null) {
+			delegate.stop();
+			delegate.clearMediaItems();
+		}
+		qualityManuallySelected = false;
 	}
 
 	public void release() {

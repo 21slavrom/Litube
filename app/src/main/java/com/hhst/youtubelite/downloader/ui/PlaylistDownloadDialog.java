@@ -7,6 +7,7 @@ import android.content.ServiceConnection;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -72,6 +73,7 @@ import java.util.concurrent.Executors;
  */
 @UnstableApi
 public final class PlaylistDownloadDialog {
+	private static final String TAG = "PlaylistDownloadDlg";
 	private static final long PLAYLIST_LOAD_RETRY_DELAY_MS = 250L;
 	private final Context context;
 	private final YoutubeExtractor youtubeExtractor;
@@ -594,7 +596,8 @@ public final class PlaylistDownloadDialog {
 					JsonObject candidate = gson.fromJson(json, JsonObject.class);
 					parsedPayload = candidate == null || candidate.isJsonNull() ? null : candidate;
 				}
-			} catch (Exception ignored) {
+			} catch (Exception e) {
+				Log.w(TAG, "handlePlaylistPayloadResult: failed to parse playlist payload", e);
 				parsedPayload = null;
 			}
 			payload = parsedPayload;
@@ -658,7 +661,8 @@ public final class PlaylistDownloadDialog {
 				for (String part : durationText.trim().split(":")) {
 					try {
 						durationSeconds = durationSeconds * 60L + Integer.parseInt(part.trim());
-					} catch (NumberFormatException ignored) {
+					} catch (NumberFormatException e) {
+						Log.d(TAG, "handlePlaylistPayloadResult: invalid duration segment", e);
 						durationSeconds = 0L;
 						break;
 					}
@@ -1016,9 +1020,10 @@ public final class PlaylistDownloadDialog {
 		if (bindingRequested) {
 			try {
 				context.unbindService(connection);
-			} catch (IllegalArgumentException ignored) {
+			} catch (IllegalArgumentException e) {
+				Log.d(TAG, "disposeResources: service not registered", e);
 			}
-			bindingRequested = false;
+		bindingRequested = false;
 		}
 		dialog = null;
 	}

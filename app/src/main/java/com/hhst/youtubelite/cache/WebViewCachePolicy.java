@@ -1,5 +1,7 @@
 package com.hhst.youtubelite.cache;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -21,6 +23,8 @@ import okhttp3.Response;
  */
 @Singleton
 public final class WebViewCachePolicy {
+
+	private static final String TAG = "WebViewCachePolicy";
 
 	public static final long WEBVIEW_CACHE_MAX_AGE_SECONDS = 60L * 60L * 24L * 365L;
 	public static final String ORIGINAL_CACHE_CONTROL_HEADER = "X-Litube-Cache-Control";
@@ -121,7 +125,8 @@ public final class WebViewCachePolicy {
 		if (hasText(ageHeader)) {
 			try {
 				ageMillis += TimeUnit.SECONDS.toMillis(Long.parseLong(ageHeader));
-			} catch (NumberFormatException ignored) {
+			} catch (NumberFormatException e) {
+				Log.d(TAG, "computeResponseAgeMillis: failed to parse Age header", e);
 			}
 		}
 		return ageMillis;
@@ -152,7 +157,8 @@ public final class WebViewCachePolicy {
 			if (directive.startsWith("max-age=")) {
 				try {
 					cachePolicy.maxAgeSeconds = Long.parseLong(directive.substring("max-age=".length()).trim());
-				} catch (NumberFormatException ignored) {
+				} catch (NumberFormatException e) {
+					Log.d(TAG, "parseCachePolicy: failed to parse max-age directive", e);
 					cachePolicy.maxAgeSeconds = -1L;
 				}
 			}
@@ -164,7 +170,8 @@ public final class WebViewCachePolicy {
 		if (!hasText(value)) return -1L;
 		try {
 			return ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli();
-		} catch (DateTimeParseException ignored) {
+		} catch (DateTimeParseException e) {
+			Log.d(TAG, "parseHttpDateMillis: failed to parse HTTP date", e);
 			return -1L;
 		}
 	}
@@ -173,9 +180,6 @@ public final class WebViewCachePolicy {
 		return value != null && !value.isEmpty();
 	}
 
-/**
- * Component that handles app logic.
- */
 	private static final class CachePolicy {
 		private boolean noCache;
 		private boolean noStore;

@@ -15,6 +15,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -79,6 +80,7 @@ import dagger.hilt.android.AndroidEntryPoint;
 @AndroidEntryPoint
 @UnstableApi
 public class DownloadActivity extends AppCompatActivity implements DownloadPermissionHost {
+	private static final String TAG = "DownloadActivity";
 	public static final String EXTRA_PARENT_ID = "extra_parent_id";
 	public static final String EXTRA_PARENT_TITLE = "extra_parent_title";
 	private static final int MENU_CLEAR_HISTORY = 1;
@@ -244,7 +246,8 @@ public class DownloadActivity extends AppCompatActivity implements DownloadPermi
 		super.onStop();
 		try {
 			unregisterReceiver(receiver);
-		} catch (Exception ignored) {
+		} catch (Exception e) {
+			Log.w(TAG, "onStop: receiver not registered", e);
 		}
 		if (isBound) {
 			unbindService(connection);
@@ -571,9 +574,6 @@ public class DownloadActivity extends AppCompatActivity implements DownloadPermi
 		}
 	}
 
-/**
- * Component that handles app logic.
- */
 	private final class DownloadRecordsAdapter extends RecyclerView.Adapter<DownloadRecordsAdapter.VH> {
 		private static final Object PAYLOAD_RECORD_PROGRESS = new Object();
 		@NonNull
@@ -678,9 +678,6 @@ public class DownloadActivity extends AppCompatActivity implements DownloadPermi
 			return items.size();
 		}
 
-/**
- * Contract for app logic.
- */
 		interface Actions {
 			void onOpen(DownloadRecord record);
 
@@ -697,9 +694,6 @@ public class DownloadActivity extends AppCompatActivity implements DownloadPermi
 			void onDelete(DownloadRecord record);
 		}
 
-/**
- * Component that handles app logic.
- */
 		final class VH extends RecyclerView.ViewHolder {
 			private final ShapeableImageView thumbnail;
 			private final TextView title;

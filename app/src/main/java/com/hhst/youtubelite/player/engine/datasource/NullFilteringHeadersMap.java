@@ -13,7 +13,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 
 /**
- * Component that handles app logic.
+ * Map decorator that hides null keys and entries from HttpURLConnection header maps.
  */
 public final class NullFilteringHeadersMap extends ForwardingMap<String, List<String>> {
 	private final Map<String, List<String>> headers;
@@ -51,7 +51,7 @@ public final class NullFilteringHeadersMap extends ForwardingMap<String, List<St
 	}
 
 /**
- * Component that handles app logic.
+ * Set decorator that drops null header names during iteration.
  */
 	private static final class NullFilteringSet extends ForwardingSet<String> {
 		private final Set<String> delegate;
@@ -91,7 +91,7 @@ public final class NullFilteringHeadersMap extends ForwardingMap<String, List<St
 	}
 
 /**
- * Component that handles app logic.
+ * Entry-set decorator that drops null-keyed entries during iteration.
  */
 	private static final class NullFilteringEntrySet extends ForwardingSet<Entry<String, List<String>>> {
 		private final Set<Entry<String, List<String>>> delegate;
@@ -131,7 +131,7 @@ public final class NullFilteringHeadersMap extends ForwardingMap<String, List<St
 	}
 
 /**
- * Component that handles app logic.
+ * Iterator decorator that skips null elements from the underlying iterator.
  */
 	private static final class NullFilteringIterator<T> implements Iterator<T> {
 		private final Iterator<T> delegate;
@@ -170,7 +170,7 @@ public final class NullFilteringHeadersMap extends ForwardingMap<String, List<St
 	}
 
 /**
- * Component that handles app logic.
+ * Iterator decorator that skips null and null-keyed map entries.
  */
 	private static final class NullFilteringEntryIterator implements Iterator<Entry<String, List<String>>> {
 		private final Iterator<Entry<String, List<String>>> delegate;

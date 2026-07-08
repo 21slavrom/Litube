@@ -36,7 +36,7 @@ import androidx.media3.ui.PlayerView;
 import androidx.media3.ui.SubtitleView;
 
 import com.hhst.youtubelite.R;
-import com.hhst.youtubelite.player.common.Constant;
+import com.hhst.youtubelite.player.common.PlayerUiConstants;
 import com.hhst.youtubelite.player.common.PlayerPreferences;
 import com.hhst.youtubelite.player.controller.ControllerState;
 import com.hhst.youtubelite.player.sponsor.SponsorBlockManager;
@@ -152,7 +152,7 @@ public class LitePlayerView extends PlayerView {
 		setClipToOutline(false);
 		setResizeMode(prefs.getResizeMode());
 		ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) getLayoutParams();
-		params.topMargin = ViewUtils.dpToPx(activity, Constant.TOP_MARGIN_DP);
+		params.topMargin = ViewUtils.dpToPx(activity, PlayerUiConstants.TOP_MARGIN_DP);
 		params.width = ConstraintLayout.LayoutParams.MATCH_PARENT;
 		int screenWidth = ViewUtils.getScreenWidth(activity);
 		params.height = (int) (screenWidth * 9 / 16.0);
@@ -210,7 +210,7 @@ public class LitePlayerView extends PlayerView {
 			} else {
 				params.width = ConstraintLayout.LayoutParams.MATCH_PARENT;
 				params.height = normalHeight > 0 ? normalHeight : (int) (ViewUtils.getScreenWidth(activity) * 9 / 16.0);
-				params.topMargin = ViewUtils.dpToPx(activity, Constant.TOP_MARGIN_DP);
+				params.topMargin = ViewUtils.dpToPx(activity, PlayerUiConstants.TOP_MARGIN_DP);
 				params.rightMargin = 0;
 				params.bottomMargin = 0;
 			}

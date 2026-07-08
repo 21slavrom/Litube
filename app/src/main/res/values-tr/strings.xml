@@ -26,24 +26,16 @@
     <string name="download_finished">İndirme bitti: \"%1$s\" şuraya kaydedildi: \"%2$s\"</string>
     <string name="failed_to_download">İndirilemedi</string>
     <string name="failed_to_download_thumbnail">Görsel indirilemedi</string>
-    <string name="audio_only">Sadece Ses</string>
-    <string name="player_gestures">Ekran hareketleri</string>
-    <string name="close">Kapat</string>
+    <string name="audio_only">Sadece Ses</string>    <string name="close">Kapat</string>
     <string name="save">Kaydet</string>
-    <string name="share">Paylaş</string>
-    <string name="share_thumbnail">Kapak Resmini Paylaş</string>
-    <string name="extension">Eklentiler</string>
-    <string name="request_restart">Değişiklikleri görmek için yeniden başlatın</string>
-    <string name="restart">Yeniden Başlat</string>
+    <string name="share">Paylaş</string>    <string name="extension">Eklentiler</string>
     <string name="display_dislikes">Beğenmeme sayısını (Dislike) göster</string>
     <string name="hide_shorts">Shorts videolarını gizle</string>
     <string name="action_pause">Duraklat</string>
     <string name="action_play">Oynat</string>
     <string name="action_replay">Baştan oynat</string>
     <string name="action_previous">Öncekine geç</string>
-    <string name="action_next">Sıradakine geç</string>
-    <string name="general">Görünüm</string>
-    <string name="player">Oynatma</string>
+    <string name="action_next">Sıradakine geç</string>    <string name="player">Oynatma</string>
     <string name="sponsorblock">SponsorBlock</string>
     <string name="skip_sponsors">Sponsorlu kısımları atla</string>
     <string name="skip_sponsors_selfpromo">Kanalın kendi reklamını atla</string>
@@ -104,7 +96,7 @@
     <string name="application_not_found">Uygulama bulunamadı</string>
     <string name="press_back_again_to_exit">Çıkmak için tekrar geri basın</string>
     <string name="threads">İş parçacıkları</string>
-    <string name="app_description">YouTube için gelişmiş bir webview arayüzü.</string>
+    <string name="app_description">YouTube için gelişmiş bir WebView arayüzü.</string>
     <string name="source_code">Kaynak Kodu</string>
     <string name="clear_cache">Önbelleği Temizle</string>
     <string name="export_error_log">Hata Kaydını Dışa Aktar</string>
@@ -178,4 +170,40 @@
     <string name="playlist_download_batch_segment_partial" tools:ignore="PluralsCandidate">%1$d tanesi eksik indi</string>
     <string name="playlist_download_batch_segment_failed" tools:ignore="PluralsCandidate">%1$d tanesi başarısız oldu</string>
     <string name="playlist_download_started">Liste indirilmeye başlandı</string>
+    <string name="open_with">Birlikte aç</string>
+    <string name="interface_category">Arayüz</string>
+    <string name="interface_summary">Beğenmeme sayısını göster, Shorts gizle</string>    <string name="set_as_default_app_title">Bağlantıları varsayılan olarak aç</string>
+    <string name="set_as_default_app_message">Android, Litube\'u YouTube bağlantıları için varsayılan uygulama yapmaz. Sistem uygulama ayarlarını açın, \"Varsayılan olarak aç\" seçeneğini etkinleştirin ve Litube\'un YouTube URL\'lerini işlemesi için desteklenen bağlantıları onaylayın.</string>
+    <string name="open_settings">Ayarları aç</string>
+    <string name="cast">Yayınla</string>
+    <string name="casting_to">%1$s cihazına yayınlanıyor</string>    <string name="cast_stop">Yayını durdur</string>
+    <string name="cast_connected_start_video">Yayın bağlandı — bir video oynatın</string>
+    <string name="cast_no_stream">Bu video için yayınlanabilir akış yok</string>    <string name="cast_failed">Yayın başarısız oldu</string>
+    <string name="cast_disconnect">Bağlantıyı kes</string>    <string name="cast_no_devices_found">Cast cihazı bulunamadı</string>
+    <string name="cast_no_devices_hint">Yayınlamnın aynı ağda kurulu olduğundan emin olun.</string>
+    <string name="cast_unavailable">Yayın kullanılamıyor</string>
+    <string name="cast_unavailable_hint">Yayın için Google Play hizmetleri gerekir. Tarayıcıda oynatma hala çalışır.</string>
+    <string name="cast_learn_casting">Yayınlama hakkında bilgi edinin</string>
+    <string name="cast_section_devices">Kullanılabilir cihazlar</string>
+    <string name="cast_section_connected">Bağlı cihazlar</string>
+    <string name="cast_section_link">Herhangi bir cihazda aç</string>
+    <string name="cast_link_connected">Bağlantı tarayıcıda açıldı</string>
+    <string name="cast_link_close">Bağlantıyı kapat</string>
+    <string name="cast_link_banner">Bağlantı üzerinden yayınlanıyor</string>
+    <string name="playback_summary">Konum, kalite, hız, sığdırma modu</string>
+    <string name="gesture">Hareketler</string>
+    <string name="gesture_summary">Dokunma, atlama, tam ekran kontrolleri</string>
+    <string name="gesture_single_tap">Tek dokunuş</string>
+    <string name="gesture_double_tap">Çift dokunuş</string>
+    <string name="gesture_long_press_speed">Uzun basış 2x</string>
+    <string name="gesture_seek">Kaydırarak geç</string>
+    <string name="gesture_fullscreen_swipe">Tam ekrana gir/çık</string>
+    <string name="enable_in_windowed">Pencere modunda etkinleştir</string>
+    <string name="enable_in_fullscreen">Tam ekranda etkinleştir</string>
+    <string name="background_mini_player">Arka plan &amp; Mini oynatıcı</string>
+    <string name="background_mini_player_summary">PiP, mini oynatıcı, arka planda oynatma</string>
+    <string name="sponsorblock_summary">Sponsorlar, kendi reklamı, öne çıkanlar</string>
+    <string name="brightness">Parlaklık</string>
+    <string name="volume">Ses</string>
+    <string name="reset_all_settings">Tüm ayarları sıfırla</string>
 </resources>
