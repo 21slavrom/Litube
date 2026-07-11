@@ -7,14 +7,14 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.hhst.youtubelite.ui.main.MainScreen
+import com.hhst.youtubelite.ui.browser.BrowserScreen
 import com.hhst.youtubelite.ui.theme.LiteTheme
 
 /**
- * Single activity host for the Compose UI tree.
+ * Single-activity host for the Compose UI.
  *
- * Edge-to-edge is enabled so content can draw behind system bars; individual
- * screens are responsible for applying window insets via Scaffold or padding.
+ * Enables edge-to-edge display; [BrowserScreen] applies safe drawing insets so
+ * content clears system bars and cutouts.
  */
 class MainActivity : ComponentActivity() {
 
@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             LiteTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    MainScreen()
+                    BrowserScreen()
                 }
             }
         }
