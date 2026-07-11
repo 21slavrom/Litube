@@ -1,15 +1,57 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.hilt)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
     namespace = "com.hhst.youtubelite"
     compileSdk = 36
 
-    installation {
-        installOptions.add("-t")
+    defaultConfig {
+        applicationId = "com.hhst.litube"
+        minSdk = 26
+        targetSdk = 36
+        versionCode = 300
+        versionName = "3.0.0-devx"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+        }
+        debug {
+            isMinifyEnabled = false
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    lint {
+        abortOnError = false
     }
 
     testOptions {
@@ -18,108 +60,36 @@ android {
         }
     }
 
-    lint {
-        disable.add("MissingTranslation")
-        disable.add("ExtraTranslation")
-        abortOnError = false
-    }
-
-    defaultConfig {
-        applicationId = "com.hhst.litube"
-        minSdk = 26
-        targetSdk = 36
-        versionCode = 214
-        versionName = "v2.1.4"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        ndk {
-            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
-        }
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
-            )
-        }
-        debug {
-            isMinifyEnabled = false
-            isShrinkResources = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
-            )
-        }
-    }
-
-    compileOptions {
-        isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs = listOf("-Xjvm-default=all")
-    }
-
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false
     }
+}
 
-    packaging {
-        resources {
-            excludes += "META-INF/services/javax.script.ScriptEngineFactory"
-        }
-        jniLibs {
-            useLegacyPackaging = true
-        }
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 
 dependencies {
-    implementation(libs.lifecycle.process)
-    implementation(libs.lifecycle.livedata)
-    implementation(libs.lifecycle.viewmodel)
-    implementation(libs.kotlin.stdlib)
-    implementation(libs.kotlinx.coroutines.android)
-    compileOnly(libs.lombok)
-    annotationProcessor(libs.lombok)
-    coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
-    implementation(libs.newpipeextractor)
-    implementation(libs.isoparser)
-    implementation(libs.gson)
-    implementation(libs.commons.io)
-    implementation(libs.picasso)
-    implementation(libs.media)
-    implementation(libs.photoview)
-    implementation(libs.appcompat)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
     implementation(libs.material)
-    implementation(libs.mmkv)
-    implementation(libs.activity)
-    implementation(libs.media3.exoplayer)
-    implementation(libs.media3.exoplayer.dash)
-    implementation(libs.media3.exoplayer.hls)
-    implementation(libs.media3.cast)
-    implementation(libs.play.services.cast.framework)
-    implementation(libs.nanohttpd)
-    implementation(libs.media3.ui)
-    implementation(libs.media3.datasource)
-    implementation(libs.okhttp)
-    implementation(libs.okio)
-    implementation(libs.constraintlayout)
-    implementation(libs.swiperefreshlayout)
-    implementation(libs.webkit)
-    implementation(libs.viewpager2)
-    implementation(libs.recyclerview)
-    implementation(libs.hilt.android)
-    annotationProcessor(libs.hilt.compiler)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.koin.android)
+    implementation(libs.koin.androidx.compose)
+
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+
     testImplementation(libs.junit)
-    testImplementation(libs.mockito.core)
-    testImplementation(libs.kotlinx.coroutines.test)
-    androidTestImplementation(libs.ext.junit)
-    androidTestImplementation(libs.espresso.core)
 }
