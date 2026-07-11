@@ -19,17 +19,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.hhst.youtubelite.browser.LiteWebViewFactory
+import com.hhst.youtubelite.browser.WebViewFactory
 import org.koin.androidx.compose.koinViewModel
 
-/**
- * Primary browser screen: WebView, top loading bar, and pull-to-refresh.
- *
- * Applies [WindowInsets.safeDrawing] so content clears the status bar, cutout,
- * and navigation bar while edge-to-edge is enabled.
- *
- * @param viewModel browser chrome state and WebView callbacks.
- */
+/** WebView browser with top loading bar and pull-to-refresh (edge-to-edge safe). */
 @Composable
 fun BrowserScreen(
     viewModel: BrowserViewModel = koinViewModel(),
@@ -39,7 +32,7 @@ fun BrowserScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val browserHost = remember(context) {
-        LiteWebViewFactory.create(
+        WebViewFactory.create(
             context = context,
             callbacks = viewModel,
             onRefresh = { webView ->

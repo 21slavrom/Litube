@@ -2,26 +2,25 @@ package com.hhst.youtubelite
 
 import android.app.Application
 import com.hhst.youtubelite.di.appModule
+import com.hhst.youtubelite.extractor.PoTokenProvider
+import com.tencent.mmkv.MMKV
+import org.koin.android.ext.android.get
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
 import org.koin.core.logger.Level
 
-/**
- * Process-level entry point for the app.
- *
- * Starts Koin so dependencies are available before any [android.app.Activity]
- * is created. Keep initialization here limited to work that must run once per
- * process; prefer lazy setup inside feature modules when possible.
- */
-class LiteApplication : Application() {
+/** Process entry: MMKV, Koin, and optional poToken WebView init. */
+class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        MMKV.initialize(this)
         startKoin {
             androidLogger(Level.ERROR)
-            androidContext(this@LiteApplication)
+            androidContext(this@App)
             modules(appModule)
         }
+        runCatching { get<PoTokenProvider>().initialize() }
     }
 }

@@ -1,7 +1,7 @@
 package com.hhst.youtubelite.core
 
-/** Shared constants for the Lite rewrite. */
-object LiteConstants {
+/** Shared constants for browser and network layers. */
+object Constants {
     const val HOME_URL = "https://m.youtube.com"
     const val YOUTUBE_DOMAIN = "youtube.com"
     const val USER_AGENT =

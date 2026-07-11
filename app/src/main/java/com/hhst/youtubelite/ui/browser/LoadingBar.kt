@@ -26,14 +26,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
 /**
- * Thin top loading indicator driven by WebView progress.
- *
- * Animates toward [progress] while [visible] is true, then completes and fades
- * out when loading ends.
- *
- * @param progress reported load fraction in the range `0f..1f`.
- * @param visible whether the bar should remain active.
- * @param modifier layout modifier for the canvas.
+ * Top loading bar driven by WebView progress (`0f..1f`).
+ * Animates while [visible], then finishes and fades out.
  */
 @Composable
 fun LoadingBar(

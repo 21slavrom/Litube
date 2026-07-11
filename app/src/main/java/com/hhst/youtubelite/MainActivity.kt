@@ -8,21 +8,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.hhst.youtubelite.ui.browser.BrowserScreen
-import com.hhst.youtubelite.ui.theme.LiteTheme
+import com.hhst.youtubelite.ui.theme.AppTheme
 
-/**
- * Single-activity host for the Compose UI.
- *
- * Enables edge-to-edge display; [BrowserScreen] applies safe drawing insets so
- * content clears system bars and cutouts.
- */
+/** Single-activity Compose host; edge-to-edge system bars. */
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            LiteTheme {
+            AppTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     BrowserScreen()
                 }

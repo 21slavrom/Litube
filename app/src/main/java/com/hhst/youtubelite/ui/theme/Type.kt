@@ -6,10 +6,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-/**
- * App type scale. Unspecified roles keep Material 3 defaults.
- */
-val LiteTypography = Typography(
+/** App type scale; unspecified roles keep Material 3 defaults. */
+val AppTypography = Typography(
     displaySmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,

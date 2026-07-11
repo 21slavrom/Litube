@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!--
-      Window theme applied before Compose starts.
-      In-app Material styling is owned by LiteTheme.
-    -->
-    <style name="Theme.Lite" parent="Theme.Material3.DayNight.NoActionBar">
+    <!-- Window theme before Compose; in-app styling is AppTheme. -->
+    <style name="Theme.App" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowBackground">@color/background</item>

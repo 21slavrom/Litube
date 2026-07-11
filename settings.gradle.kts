@@ -26,3 +26,11 @@ dependencyResolutionManagement {
 
 rootProject.name = "litube"
 include(":app")
+
+// Local NewPipeExtractor (v0.26.0-aria fork) for in-tree patches during the rewrite.
+includeBuild("external/NewPipeExtractor") {
+    dependencySubstitution {
+        substitute(module("net.newpipe:extractor")).using(project(":extractor"))
+        substitute(module("com.github.HydeYYHH:NewPipeExtractor")).using(project(":extractor"))
+    }
+}

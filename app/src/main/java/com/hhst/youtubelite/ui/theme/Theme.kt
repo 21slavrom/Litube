@@ -41,17 +41,11 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 /**
- * Applies the app [MaterialTheme] to [content].
- *
- * @param darkTheme whether to use the dark color scheme; defaults to the system
- *   setting.
- * @param dynamicColor when true on API 31+, uses Material You wallpaper colors
- *   instead of the fixed brand palette. Defaults to false so brand colors stay
- *   consistent across devices.
- * @param content the Compose hierarchy that should inherit this theme.
+ * App [MaterialTheme]. [dynamicColor] (API 31+) uses wallpaper colors; default
+ * is the fixed brand palette for consistent red accents.
  */
 @Composable
-fun LiteTheme(
+fun AppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
@@ -71,7 +65,7 @@ fun LiteTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = LiteTypography,
+        typography = AppTypography,
         content = content,
     )
 }

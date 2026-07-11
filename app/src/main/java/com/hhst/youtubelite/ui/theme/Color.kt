@@ -2,10 +2,10 @@ package com.hhst.youtubelite.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-/** Brand accent for primary emphasis. */
+/** YouTube-style brand red. */
 val YtRed = Color(0xFFFF0000)
 
-// Light color roles (Material 3).
+// Material 3 light roles.
 val LightPrimary = Color(0xFF0F0F0F)
 val LightOnPrimary = Color(0xFFFFFFFF)
 val LightSecondary = Color(0xFF606060)
@@ -18,7 +18,7 @@ val LightSurfaceVariant = Color(0xFFF1F1F1)
 val LightOnSurfaceVariant = Color(0xFF606060)
 val LightOutline = Color(0xFFE5E5E5)
 
-// Dark color roles (Material 3).
+// Material 3 dark roles.
 val DarkPrimary = Color(0xFFFFFFFF)
 val DarkOnPrimary = Color(0xFF0F0F0F)
 val DarkSecondary = Color(0xFFAAAAAA)
