@@ -7,16 +7,20 @@ import org.junit.Test
 class UrlPolicyTest {
 
     @Test
-    fun allowsYoutubeAndGoogleAccounts() {
+    fun allowsYoutubeAndAccounts() {
         assertTrue(UrlPolicy.isAllowedUrl("https://m.youtube.com"))
         assertTrue(UrlPolicy.isAllowedUrl("https://www.youtube.com/watch?v=abc"))
         assertTrue(UrlPolicy.isAllowedUrl("https://accounts.google.com/ServiceLogin"))
-        assertTrue(UrlPolicy.canLoadInWebView("about:blank"))
     }
 
     @Test
-    fun rejectsUnrelatedHosts() {
+    fun canLoadLocalSchemes() {
+        assertTrue(UrlPolicy.canLoad("about:blank"))
+    }
+
+    @Test
+    fun rejectsOtherHosts() {
         assertFalse(UrlPolicy.isAllowedUrl("https://example.com"))
-        assertFalse(UrlPolicy.canLoadInWebView("https://evil.example"))
+        assertFalse(UrlPolicy.canLoad("https://evil.example"))
     }
 }

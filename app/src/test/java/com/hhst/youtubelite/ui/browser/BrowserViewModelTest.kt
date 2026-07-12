@@ -1,5 +1,6 @@
 package com.hhst.youtubelite.ui.browser
 
+import com.hhst.youtubelite.core.Constants
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -8,49 +9,58 @@ import org.junit.Test
 class BrowserViewModelTest {
 
     @Test
-    fun onPageStarted_showsLoadingBar() {
-        val viewModel = BrowserViewModel()
-        viewModel.onPageStarted("https://m.youtube.com")
+    fun openTab_rejectsDisallowedUrl() {
+        val vm = BrowserViewModel()
+        vm.openTab("https://evil.example/phish")
 
-        val state = viewModel.uiState.value
-        assertTrue(state.isLoading)
-        assertTrue(state.progress > 0f)
-        assertEquals("https://m.youtube.com", state.currentUrl)
+        assertEquals(1, vm.uiState.value.tabs.size)
+        assertEquals(Constants.PAGE_HOME, activeKind(vm))
     }
 
     @Test
-    fun onProgressChanged_advancesAndFinishes() {
-        val viewModel = BrowserViewModel()
-        viewModel.onPageStarted("https://m.youtube.com/watch?v=1")
-        viewModel.onProgressChanged(40)
+    fun openTab_opensWatchForward() {
+        val vm = BrowserViewModel()
+        vm.openTab("https://m.youtube.com/watch?v=1")
 
-        assertTrue(viewModel.uiState.value.isLoading)
-        assertTrue(viewModel.uiState.value.progress >= 0.4f)
-
-        viewModel.onProgressChanged(100)
-        val finished = viewModel.uiState.value
-        assertFalse(finished.isLoading)
-        assertEquals(1f, finished.progress, 0.001f)
-        assertFalse(finished.isRefreshing)
+        assertEquals(Constants.PAGE_WATCH, activeKind(vm))
+        assertTrue(vm.uiState.value.forward)
+        assertTrue(vm.uiState.value.canPop)
     }
 
     @Test
-    fun onRefreshStarted_setsRefreshingFlag() {
-        val viewModel = BrowserViewModel()
-        viewModel.onRefreshStarted()
+    fun openTab_reusesNavAndUpdatesUrl() {
+        val vm = BrowserViewModel()
+        vm.openTab("https://m.youtube.com/shorts/a")
+        val id = vm.uiState.value.activeId
 
-        val state = viewModel.uiState.value
-        assertTrue(state.isRefreshing)
-        assertTrue(state.isLoading)
+        vm.openTab("https://m.youtube.com/shorts/b")
+
+        assertEquals(id, vm.uiState.value.activeId)
+        assertEquals("https://m.youtube.com/shorts/b", vm.uiState.value.url)
     }
 
     @Test
-    fun onNavigationStateChanged_updatesBackAvailability() {
-        val viewModel = BrowserViewModel()
-        viewModel.onNavigationStateChanged(true)
-        assertTrue(viewModel.uiState.value.canGoBack)
+    fun onBack_webBackBeforePopBeforeFinish() {
+        val vm = BrowserViewModel()
+        vm.openTab("https://m.youtube.com/watch?v=1")
+        assertTrue(vm.uiState.value.canPop)
 
-        viewModel.onNavigationStateChanged(false)
-        assertFalse(viewModel.uiState.value.canGoBack)
+        // WebView still has history -> consume it first, don't drop the tab.
+        assertEquals(BackResult.GoWebBack, vm.onBack(webCanGoBack = true))
+        assertEquals(Constants.PAGE_WATCH, activeKind(vm))
+        assertTrue(vm.uiState.value.canPop)
+
+        // WebView history drained -> now drop the watch tab back to home.
+        assertEquals(BackResult.Handled, vm.onBack(webCanGoBack = false))
+        assertEquals(Constants.PAGE_HOME, activeKind(vm))
+        assertFalse(vm.uiState.value.canPop)
+
+        // Only home remains, no web history -> leave the app.
+        assertEquals(BackResult.Finish, vm.onBack(webCanGoBack = false))
+    }
+
+    private fun activeKind(vm: BrowserViewModel): String? {
+        val state = vm.uiState.value
+        return state.tabs.find { it.id == state.activeId }?.kind
     }
 }

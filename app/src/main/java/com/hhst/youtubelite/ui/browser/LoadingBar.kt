@@ -6,7 +6,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,10 +24,7 @@ import com.hhst.youtubelite.ui.theme.YtRed
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
-/**
- * Top loading bar driven by WebView progress (`0f..1f`).
- * Animates while [visible], then finishes and fades out.
- */
+/** Top loading bar; [progress] is `0f..1f`. */
 @Composable
 fun LoadingBar(
     progress: Float,
@@ -85,8 +81,7 @@ fun LoadingBar(
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(BAR_HEIGHT)
-            .padding(horizontal = HORIZONTAL_PADDING),
+            .height(BAR_HEIGHT),
     ) {
         val corner = CornerRadius(size.height / 2f, size.height / 2f)
         drawRoundRect(
@@ -132,7 +127,6 @@ fun LoadingBar(
 }
 
 private val BAR_HEIGHT = 2.dp
-private val HORIZONTAL_PADDING = 16.dp
 private val TRACK_COLOR = Color(0xCCCCCCCC)
 private val GRADIENT_START = Color(0xFF736EFE)
 private val GRADIENT_END = Color(0xFF5EFCE8)
