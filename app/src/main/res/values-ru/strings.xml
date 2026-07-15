@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Litube</string>
+    <string name="back_again_to_exit">Нажмите еще раз, чтобы выйти</string>
+    <string name="navigate_back">Назад</string>
+    <string name="extension">Расширение</string>
+    <string name="display_dislikes">Отображать "Не нравится"</string>
+    <string name="hide_shorts">Скрыть "Shorts"</string>
+    <string name="interface_category">Интерфейс</string>
+    <string name="player">Воспроизведение</string>
+    <string name="gesture">Жесты</string>
+    <string name="gesture_single_tap">Одно нажатие</string>
+    <string name="gesture_double_tap">Двойное нажатие</string>
+    <string name="gesture_long_press_speed">Долгое нажатие 2x</string>
+    <string name="gesture_seek">Проведите для перемотки</string>
+    <string name="gesture_fullscreen_swipe">Войти/выйти из полноэкранного режима</string>
+    <string name="enable_in_windowed">Включить в оконном режиме</string>
+    <string name="enable_in_fullscreen">Включить в полноэкранном режиме</string>
+    <string name="brightness">Яркость</string>
+    <string name="volume">Громкость</string>
+    <string name="background_mini_player">Фон &amp; мини-плеер</string>
+    <string name="pip">Картинка в картинке</string>
+    <string name="in_app_mini_player">Встроенный мини-плеер</string>
+    <string name="background_play">Включить воспроизведение в фоновом режиме</string>
+    <string name="sponsorblock">SponsorBlock</string>
+    <string name="skip_sponsors">Пропускать спонсоры</string>
+    <string name="skip_sponsors_selfpromo">Пропускать самопиар</string>
+    <string name="skip_sponsors_highlight">Пропускать выделенные фрагменты</string>
+    <string name="remember_last_position">Запоминать и автоматически возобновлять последнюю позицию просмотра</string>
+    <string name="remember_quality">Запоминать качество видео</string>
+    <string name="remember_playback_speed">Запоминать скорость воспроизведения</string>
+    <string name="remember_resize_mode">Запоминать режим изменения размера</string>
+    <string name="reset_all_settings">Сбросить все настройки</string>
+    <string name="reset_extension_title">Сбросить расширения</string>
+    <string name="reset_extension_message">Сбросить все настройки расширений к значениям по умолчанию?</string>
+    <string name="confirm">Подтвердить</string>
+    <string name="cancel">Отменить</string>
+</resources>

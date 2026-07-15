@@ -19,6 +19,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.createBitmap
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.hhst.youtubelite.core.Constants
+import com.hhst.youtubelite.extension.ExtensionInjector
+import com.hhst.youtubelite.extension.ExtensionManager
 import com.hhst.youtubelite.ui.theme.YtRed
 import java.nio.charset.StandardCharsets
 
@@ -27,6 +29,8 @@ object WebViewFactory {
 
     private const val TAG = "WebViewFactory"
     private const val NAV_SCRIPT_ASSET = "script/nav.js"
+    /** Master-branch interface name kept for injected page scripts. */
+    private const val LITE_ALIAS = "lite"
 
     @Volatile
     private var navScript: String? = null
@@ -35,9 +39,17 @@ object WebViewFactory {
     fun create(
         context: Context,
         callbacks: WebViewCallbacks,
+        extensionManager: ExtensionManager,
+        onOpenExtension: () -> Unit,
         onRefresh: (WebView) -> Unit,
     ): BrowserHost {
         val appContext = context.applicationContext
+        val injector = ExtensionInjector(appContext)
+        val bridge = Bridge(
+            onOpenTab = callbacks::onOpenTab,
+            onOpenExtension = onOpenExtension,
+            extensionManager = extensionManager,
+        )
         val webView = WebView(context).apply {
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -62,8 +74,9 @@ object WebViewFactory {
                 mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
                 userAgentString = Constants.USER_AGENT
             }
-            addJavascriptInterface(Bridge(callbacks::onOpenTab), Bridge.NAME)
-            webViewClient = BrowserWebViewClient(appContext, callbacks)
+            addJavascriptInterface(bridge, Bridge.NAME)
+            addJavascriptInterface(bridge, LITE_ALIAS)
+            webViewClient = BrowserWebViewClient(appContext, callbacks, injector)
             webChromeClient = BrowserChromeClient(callbacks)
         }
 
@@ -108,6 +121,7 @@ data class BrowserHost(
 private class BrowserWebViewClient(
     private val appContext: Context,
     private val callbacks: WebViewCallbacks,
+    private val injector: ExtensionInjector,
 ) : WebViewClient() {
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -133,6 +147,7 @@ private class BrowserWebViewClient(
     override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
         super.onPageStarted(view, url, favicon)
         WebViewFactory.injectNavScript(appContext, view)
+        injector.inject(view)
         callbacks.onPageStarted(url)
         callbacks.onNavigationStateChanged(view.canGoBack())
     }
@@ -140,12 +155,15 @@ private class BrowserWebViewClient(
     override fun onPageFinished(view: WebView, url: String) {
         super.onPageFinished(view, url)
         WebViewFactory.injectNavScript(appContext, view)
+        injector.inject(view)
         callbacks.onPageFinished(url)
         callbacks.onNavigationStateChanged(view.canGoBack())
     }
 
     override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
         super.doUpdateVisitedHistory(view, url, isReload)
+        // SPA navigations often skip full reloads; re-run inject for settings.
+        injector.inject(view)
         callbacks.onHistoryChanged(url)
         callbacks.onNavigationStateChanged(view.canGoBack())
     }

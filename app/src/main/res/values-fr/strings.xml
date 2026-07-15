@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Litube</string>
+    <string name="back_again_to_exit">Appuyez à nouveau sur retour pour quitter</string>
+    <string name="navigate_back">Retour</string>
+    <string name="extension">Extension</string>
+    <string name="display_dislikes">Afficher les dislikes</string>
+    <string name="hide_shorts">Masquer les shorts</string>
+    <string name="interface_category">Interface</string>
+    <string name="player">Lecture</string>
+    <string name="gesture">Gestes</string>
+    <string name="gesture_single_tap">Simple tap</string>
+    <string name="gesture_double_tap">Double tap</string>
+    <string name="gesture_long_press_speed">Appui long 2x</string>
+    <string name="gesture_seek">Balayage pour chercher</string>
+    <string name="gesture_fullscreen_swipe">Entrer/sortir du plein écran</string>
+    <string name="enable_in_windowed">Activer en mode fenêtré</string>
+    <string name="enable_in_fullscreen">Activer en plein écran</string>
+    <string name="brightness">Luminosité</string>
+    <string name="volume">Volume</string>
+    <string name="background_mini_player">Arrière-plan &amp; Mini-lecteur</string>
+    <string name="pip">Image dans l\'image</string>
+    <string name="in_app_mini_player">Mini-lecteur intégré</string>
+    <string name="background_play">Activer la lecture en arrière-plan</string>
+    <string name="sponsorblock">SponsorBlock</string>
+    <string name="skip_sponsors">Ignorer les sponsors</string>
+    <string name="skip_sponsors_selfpromo">Ignorer l\'auto-promotion</string>
+    <string name="skip_sponsors_highlight">Ignorer les moments forts</string>
+    <string name="remember_last_position">Se souvenir et reprendre automatiquement la dernière position de visionnage</string>
+    <string name="remember_quality">Se souvenir de la qualité vidéo</string>
+    <string name="remember_playback_speed">Se souvenir de la vitesse de lecture</string>
+    <string name="remember_resize_mode">Se souvenir du mode de redimensionnement</string>
+    <string name="reset_all_settings">Réinitialiser tous les paramètres</string>
+    <string name="reset_extension_title">Réinitialiser les extensions</string>
+    <string name="reset_extension_message">Réinitialiser tous les paramètres des extensions par défaut ?</string>
+    <string name="confirm">Confirmer</string>
+    <string name="cancel">Annuler</string>
+</resources>

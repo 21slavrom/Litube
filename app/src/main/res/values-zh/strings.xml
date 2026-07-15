@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Litube</string>
+    <string name="back_again_to_exit">再按一次退出</string>
+    <string name="navigate_back">返回</string>
+    <string name="extension">扩展</string>
+    <string name="display_dislikes">显示点踩数</string>
+    <string name="hide_shorts">隐藏 Shorts</string>
+    <string name="interface_category">界面</string>
+    <string name="player">播放</string>
+    <string name="gesture">手势</string>
+    <string name="gesture_single_tap">单击</string>
+    <string name="gesture_double_tap">双击</string>
+    <string name="gesture_long_press_speed">长按 2x</string>
+    <string name="gesture_seek">左右滑动快进快退</string>
+    <string name="gesture_fullscreen_swipe">进入/退出全屏</string>
+    <string name="enable_in_windowed">在非全屏启用</string>
+    <string name="enable_in_fullscreen">在全屏启用</string>
+    <string name="brightness">亮度</string>
+    <string name="volume">音量</string>
+    <string name="background_mini_player">后台与小窗</string>
+    <string name="pip">画中画</string>
+    <string name="in_app_mini_player">应用内小窗</string>
+    <string name="background_play">后台播放</string>
+    <string name="sponsorblock">SponsorBlock</string>
+    <string name="skip_sponsors">跳过赞助商片段</string>
+    <string name="skip_sponsors_selfpromo">跳过自我推销</string>
+    <string name="skip_sponsors_highlight">跳过精彩片段</string>
+    <string name="remember_last_position">记住上次观看位置</string>
+    <string name="remember_quality">记住视频质量</string>
+    <string name="remember_playback_speed">记住播放速度</string>
+    <string name="remember_resize_mode">记住缩放模式</string>
+    <string name="reset_all_settings">重置所有设置</string>
+    <string name="reset_extension_title">重置扩展</string>
+    <string name="reset_extension_message">将所有扩展设置恢复为默认值？</string>
+    <string name="confirm">确认</string>
+    <string name="cancel">取消</string>
+</resources>

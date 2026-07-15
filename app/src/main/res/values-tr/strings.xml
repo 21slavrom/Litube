@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Litube</string>
+    <string name="back_again_to_exit">Çıkmak için tekrar geri basın</string>
+    <string name="navigate_back">Geri</string>
+    <string name="extension">Eklentiler</string>
+    <string name="display_dislikes">Beğenmeme sayısını (Dislike) göster</string>
+    <string name="hide_shorts">Shorts videolarını gizle</string>
+    <string name="interface_category">Arayüz</string>
+    <string name="player">Oynatma</string>
+    <string name="gesture">Hareketler</string>
+    <string name="gesture_single_tap">Tek dokunuş</string>
+    <string name="gesture_double_tap">Çift dokunuş</string>
+    <string name="gesture_long_press_speed">Uzun basış 2x</string>
+    <string name="gesture_seek">Kaydırarak geç</string>
+    <string name="gesture_fullscreen_swipe">Tam ekrana gir/çık</string>
+    <string name="enable_in_windowed">Pencere modunda etkinleştir</string>
+    <string name="enable_in_fullscreen">Tam ekranda etkinleştir</string>
+    <string name="brightness">Parlaklık</string>
+    <string name="volume">Ses</string>
+    <string name="background_mini_player">Arka plan &amp; Mini oynatıcı</string>
+    <string name="pip">Resim içinde Resim (PiP)</string>
+    <string name="in_app_mini_player">Uygulama içi mini oynatıcı</string>
+    <string name="background_play">Arka planda oynat</string>
+    <string name="sponsorblock">SponsorBlock</string>
+    <string name="skip_sponsors">Sponsorlu kısımları atla</string>
+    <string name="skip_sponsors_selfpromo">Kanalın kendi reklamını atla</string>
+    <string name="skip_sponsors_highlight">Öne çıkanları atla</string>
+    <string name="remember_last_position">Nerede kaldığımı hatırla</string>
+    <string name="remember_quality">Video kalitesini hatırla</string>
+    <string name="remember_playback_speed">Oynatma hızını hatırla</string>
+    <string name="remember_resize_mode">Ekran sığdırma tercihini hatırla</string>
+    <string name="reset_all_settings">Tüm ayarları sıfırla</string>
+    <string name="reset_extension_title">Eklentileri sıfırla</string>
+    <string name="reset_extension_message">Tüm eklenti ayarlarını varsayılana döndürelim mi?</string>
+    <string name="confirm">Onayla</string>
+    <string name="cancel">İptal</string>
+</resources>

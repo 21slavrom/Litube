@@ -2,4 +2,37 @@
 <resources>
     <string name="app_name">Litube</string>
     <string name="back_again_to_exit">Press back again to exit</string>
+    <string name="navigate_back">Back</string>
+    <string name="extension">Extensions</string>
+    <string name="display_dislikes">Show dislikes</string>
+    <string name="hide_shorts">Hide Shorts</string>
+    <string name="interface_category">Interface</string>
+    <string name="player">Playback</string>
+    <string name="gesture">Gesture</string>
+    <string name="gesture_single_tap">Single tap</string>
+    <string name="gesture_double_tap">Double tap</string>
+    <string name="gesture_long_press_speed">Long press 2x</string>
+    <string name="gesture_seek">Swipe seek</string>
+    <string name="gesture_fullscreen_swipe">Enter/exit fullscreen</string>
+    <string name="enable_in_windowed">Enable in windowed</string>
+    <string name="enable_in_fullscreen">Enable in fullscreen</string>
+    <string name="brightness">Brightness</string>
+    <string name="volume">Volume</string>
+    <string name="background_mini_player">Background &amp; mini player</string>
+    <string name="pip">Picture-in-Picture</string>
+    <string name="in_app_mini_player">In-app mini-player</string>
+    <string name="background_play">Background playback</string>
+    <string name="sponsorblock">SponsorBlock</string>
+    <string name="skip_sponsors">Skip sponsors</string>
+    <string name="skip_sponsors_selfpromo">Skip self-promotion</string>
+    <string name="skip_sponsors_highlight">Skip highlights</string>
+    <string name="remember_last_position">Remember position</string>
+    <string name="remember_quality">Remember video quality</string>
+    <string name="remember_playback_speed">Remember speed</string>
+    <string name="remember_resize_mode">Remember resize mode</string>
+    <string name="reset_all_settings">Reset all settings</string>
+    <string name="reset_extension_title">Reset extensions</string>
+    <string name="reset_extension_message">Reset all extension settings to default?</string>
+    <string name="confirm">Confirm</string>
+    <string name="cancel">Cancel</string>
 </resources>

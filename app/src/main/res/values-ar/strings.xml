@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Litube</string>
+    <string name="back_again_to_exit">اضغط رجوع مرة أخرى للخروج</string>
+    <string name="navigate_back">رجوع</string>
+    <string name="extension">الإضافات</string>
+    <string name="display_dislikes">إظهار عدم الإعجاب</string>
+    <string name="hide_shorts">إخفاء Shorts</string>
+    <string name="interface_category">الواجهة</string>
+    <string name="player">التشغيل</string>
+    <string name="gesture">الإيماءات</string>
+    <string name="gesture_single_tap">نقرة واحدة</string>
+    <string name="gesture_double_tap">نقرتان</string>
+    <string name="gesture_long_press_speed">ضغط مطول 2x</string>
+    <string name="gesture_seek">تقديم بالتمرير</string>
+    <string name="gesture_fullscreen_swipe">دخول/خروج ملء الشاشة</string>
+    <string name="enable_in_windowed">تفعيل في النافذة</string>
+    <string name="enable_in_fullscreen">تفعيل في ملء الشاشة</string>
+    <string name="brightness">السطوع</string>
+    <string name="volume">مستوى الصوت</string>
+    <string name="background_mini_player">الخلفية والمشغل المصغر</string>
+    <string name="pip">صورة داخل صورة</string>
+    <string name="in_app_mini_player">المشغل المصغر داخل التطبيق</string>
+    <string name="background_play">التشغيل في الخلفية</string>
+    <string name="sponsorblock">SponsorBlock</string>
+    <string name="skip_sponsors">تخطي الرعاة</string>
+    <string name="skip_sponsors_selfpromo">تخطي الإعلان الذاتي</string>
+    <string name="skip_sponsors_highlight">تخطي أبرز اللحظات</string>
+    <string name="remember_last_position">تذكر الموضع</string>
+    <string name="remember_quality">تذكر جودة الفيديو</string>
+    <string name="remember_playback_speed">تذكر السرعة</string>
+    <string name="remember_resize_mode">تذكر وضع التحجيم</string>
+    <string name="reset_all_settings">إعادة تعيين جميع الإعدادات</string>
+    <string name="reset_extension_title">إعادة تعيين الإضافات</string>
+    <string name="reset_extension_message">إعادة تعيين جميع إعدادات الإضافات إلى الوضع الافتراضي؟</string>
+    <string name="confirm">تأكيد</string>
+    <string name="cancel">إلغاء</string>
+</resources>

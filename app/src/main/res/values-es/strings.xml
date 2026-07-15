@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Litube</string>
+    <string name="back_again_to_exit">Pulsa atrás otra vez para salir</string>
+    <string name="navigate_back">Atrás</string>
+    <string name="extension">Extensiones</string>
+    <string name="display_dislikes">Mostrar \"no me gusta\"</string>
+    <string name="hide_shorts">Ocultar Shorts</string>
+    <string name="interface_category">Interfaz</string>
+    <string name="player">Reproducción</string>
+    <string name="gesture">Gestos</string>
+    <string name="gesture_single_tap">Toque simple</string>
+    <string name="gesture_double_tap">Doble toque</string>
+    <string name="gesture_long_press_speed">Pulsación larga 2x</string>
+    <string name="gesture_seek">Deslizar para buscar</string>
+    <string name="gesture_fullscreen_swipe">Entrar/salir de pantalla completa</string>
+    <string name="enable_in_windowed">Activar en modo ventana</string>
+    <string name="enable_in_fullscreen">Activar en pantalla completa</string>
+    <string name="brightness">Brillo</string>
+    <string name="volume">Volumen</string>
+    <string name="background_mini_player">Segundo plano &amp; minirreproductor</string>
+    <string name="pip">Imagen en imagen</string>
+    <string name="in_app_mini_player">Minirreproductor integrado</string>
+    <string name="background_play">Reproducción en segundo plano</string>
+    <string name="sponsorblock">SponsorBlock</string>
+    <string name="skip_sponsors">Saltar patrocinadores</string>
+    <string name="skip_sponsors_selfpromo">Saltar autopromoción</string>
+    <string name="skip_sponsors_highlight">Saltar destacados</string>
+    <string name="remember_last_position">Recordar posición</string>
+    <string name="remember_quality">Recordar calidad de vídeo</string>
+    <string name="remember_playback_speed">Recordar velocidad</string>
+    <string name="remember_resize_mode">Recordar modo de ajuste</string>
+    <string name="reset_all_settings">Restablecer todos los ajustes</string>
+    <string name="reset_extension_title">Restablecer extensiones</string>
+    <string name="reset_extension_message">¿Restablecer todas las configuraciones de extensiones a los valores predeterminados?</string>
+    <string name="confirm">Confirmar</string>
+    <string name="cancel">Cancelar</string>
+</resources>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Litube</string>
+    <string name="back_again_to_exit">बाहर निकलने के लिए फिर से बैक दबाएँ</string>
+    <string name="navigate_back">वापस</string>
+    <string name="extension">एक्सटेंशन</string>
+    <string name="display_dislikes">डिसलाइक दिखाएँ</string>
+    <string name="hide_shorts">Shorts छिपाएँ</string>
+    <string name="interface_category">इंटरफ़ेस</string>
+    <string name="player">प्लेबैक</string>
+    <string name="gesture">जेस्चर</string>
+    <string name="gesture_single_tap">एकल टैप</string>
+    <string name="gesture_double_tap">डबल टैप</string>
+    <string name="gesture_long_press_speed">लंबा दबाएँ 2x</string>
+    <string name="gesture_seek">स्वाइप सीक</string>
+    <string name="gesture_fullscreen_swipe">फुलस्क्रीन एंटर/एग्ज़िट</string>
+    <string name="enable_in_windowed">विंडो में सक्षम</string>
+    <string name="enable_in_fullscreen">फुलस्क्रीन में सक्षम</string>
+    <string name="brightness">चमक</string>
+    <string name="volume">आवाज़</string>
+    <string name="background_mini_player">बैकग्राउंड और मिनी प्लेयर</string>
+    <string name="pip">तस्वीर-में-तस्वीर</string>
+    <string name="in_app_mini_player">इन-ऐप मिनी-प्लेयर</string>
+    <string name="background_play">बैकग्राउंड प्लेबैक</string>
+    <string name="sponsorblock">SponsorBlock</string>
+    <string name="skip_sponsors">प्रायोजक छोड़ें</string>
+    <string name="skip_sponsors_selfpromo">स्व-प्रचार छोड़ें</string>
+    <string name="skip_sponsors_highlight">हाइलाइट छोड़ें</string>
+    <string name="remember_last_position">स्थिति याद रखें</string>
+    <string name="remember_quality">वीडियो गुणवत्ता याद रखें</string>
+    <string name="remember_playback_speed">गति याद रखें</string>
+    <string name="remember_resize_mode">आकार मोड याद रखें</string>
+    <string name="reset_all_settings">सभी सेटिंग्स रीसेट करें</string>
+    <string name="reset_extension_title">एक्सटेंशन रीसेट करें</string>
+    <string name="reset_extension_message">सभी एक्सटेंशन सेटिंग्स डिफ़ॉल्ट पर रीसेट करें?</string>
+    <string name="confirm">पुष्टि करें</string>
+    <string name="cancel">रद्द करें</string>
+</resources>

@@ -3,10 +3,15 @@ package com.hhst.youtubelite.browser
 import android.os.Handler
 import android.os.Looper
 import android.webkit.JavascriptInterface
+import com.google.gson.Gson
+import com.hhst.youtubelite.extension.ExtensionManager
 
-/** Posts tab opens from page JS onto the main thread. */
+/** WebView JS bridge (`Bridge` / `lite`). */
 class Bridge(
     private val onOpenTab: (url: String) -> Unit,
+    private val onOpenExtension: () -> Unit,
+    private val extensionManager: ExtensionManager,
+    private val gson: Gson = Gson(),
 ) {
     private val main = Handler(Looper.getMainLooper())
 
@@ -17,6 +22,14 @@ class Bridge(
         if (PageKind.of(url) == "unknown") return
         main.post { onOpenTab(url) }
     }
+
+    @JavascriptInterface
+    fun extension() {
+        main.post(onOpenExtension)
+    }
+
+    @JavascriptInterface
+    fun getPreferences(): String = gson.toJson(extensionManager.allPreferences())
 
     companion object {
         const val NAME = "Bridge"

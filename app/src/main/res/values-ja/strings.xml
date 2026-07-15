@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Litube</string>
+    <string name="back_again_to_exit">終了するにはもう一度戻るを押してください</string>
+    <string name="navigate_back">戻る</string>
+    <string name="extension">拡張機能</string>
+    <string name="display_dislikes">低評価数を表示</string>
+    <string name="hide_shorts">Shortsを非表示</string>
+    <string name="interface_category">インターフェース</string>
+    <string name="player">再生</string>
+    <string name="gesture">ジェスチャー</string>
+    <string name="gesture_single_tap">シングルタップ</string>
+    <string name="gesture_double_tap">ダブルタップ</string>
+    <string name="gesture_long_press_speed">長押し 2x</string>
+    <string name="gesture_seek">スワイプでシーク</string>
+    <string name="gesture_fullscreen_swipe">全画面の開始/終了</string>
+    <string name="enable_in_windowed">ウィンドウモードで有効</string>
+    <string name="enable_in_fullscreen">全画面で有効</string>
+    <string name="brightness">明るさ</string>
+    <string name="volume">音量</string>
+    <string name="background_mini_player">バックグラウンド &amp; ミニプレーヤー</string>
+    <string name="pip">ピクチャーインピクチャー</string>
+    <string name="in_app_mini_player">アプリ内ミニプレーヤー</string>
+    <string name="background_play">バックグラウンド再生を有効にする</string>
+    <string name="sponsorblock">SponsorBlock</string>
+    <string name="skip_sponsors">スポンサーをスキップ</string>
+    <string name="skip_sponsors_selfpromo">自己宣伝をスキップ</string>
+    <string name="skip_sponsors_highlight">ハイライトをスキップ</string>
+    <string name="remember_last_position">前回の再生位置を記憶して自動的に再開</string>
+    <string name="remember_quality">画質を記憶</string>
+    <string name="remember_playback_speed">再生速度を記憶</string>
+    <string name="remember_resize_mode">サイズ変更モードを記憶</string>
+    <string name="reset_all_settings">すべての設定をリセット</string>
+    <string name="reset_extension_title">拡張機能をリセット</string>
+    <string name="reset_extension_message">すべての拡張機能の設定をデフォルトに戻しますか？</string>
+    <string name="confirm">確認</string>
+    <string name="cancel">キャンセル</string>
+</resources>

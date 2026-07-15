@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Litube</string>
+    <string name="back_again_to_exit">종료하려면 뒤로 버튼을 한 번 더 누르세요</string>
+    <string name="navigate_back">뒤로</string>
+    <string name="extension">플러그인</string>
+    <string name="display_dislikes">싫어요 수 표시</string>
+    <string name="hide_shorts">Shorts 숨기기</string>
+    <string name="interface_category">인터페이스</string>
+    <string name="player">재생</string>
+    <string name="gesture">제스처</string>
+    <string name="gesture_single_tap">싱글 탭</string>
+    <string name="gesture_double_tap">더블 탭</string>
+    <string name="gesture_long_press_speed">길게 누름 2x</string>
+    <string name="gesture_seek">스와이프로 탐색</string>
+    <string name="gesture_fullscreen_swipe">전체화면 진입/종료</string>
+    <string name="enable_in_windowed">창 모드에서 활성화</string>
+    <string name="enable_in_fullscreen">전체화면에서 활성화</string>
+    <string name="brightness">밝기</string>
+    <string name="volume">볼륨</string>
+    <string name="background_mini_player">백그라운드 &amp; 미니 플레이어</string>
+    <string name="pip">PIP 모드</string>
+    <string name="in_app_mini_player">앱 내 미니 플레이어</string>
+    <string name="background_play">백그라운드 재생 활성화</string>
+    <string name="sponsorblock">SponsorBlock</string>
+    <string name="skip_sponsors">스폰서 건너뛰기</string>
+    <string name="skip_sponsors_selfpromo">자기 홍보 건너뛰기</string>
+    <string name="skip_sponsors_highlight">하이라이트 건너뛰기</string>
+    <string name="remember_last_position">마지막 시청 위치 기억 및 자동 재개</string>
+    <string name="remember_quality">화질 기억</string>
+    <string name="remember_playback_speed">재생 속도 기억</string>
+    <string name="remember_resize_mode">크기 조정 모드 기억</string>
+    <string name="reset_all_settings">모든 설정 초기화</string>
+    <string name="reset_extension_title">확장 기능 재설정</string>
+    <string name="reset_extension_message">모든 확장 기능 설정을 기본값으로 재설정할까요?</string>
+    <string name="confirm">확인</string>
+    <string name="cancel">취소</string>
+</resources>

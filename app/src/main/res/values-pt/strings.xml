@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Litube</string>
+    <string name="back_again_to_exit">Pressione voltar novamente para sair</string>
+    <string name="navigate_back">Voltar</string>
+    <string name="extension">Extensões</string>
+    <string name="display_dislikes">Mostrar não curtidas</string>
+    <string name="hide_shorts">Ocultar Shorts</string>
+    <string name="interface_category">Interface</string>
+    <string name="player">Reprodução</string>
+    <string name="gesture">Gestos</string>
+    <string name="gesture_single_tap">Toque único</string>
+    <string name="gesture_double_tap">Toque duplo</string>
+    <string name="gesture_long_press_speed">Pressionar e segurar 2x</string>
+    <string name="gesture_seek">Buscar deslizando</string>
+    <string name="gesture_fullscreen_swipe">Entrar/sair de tela cheia</string>
+    <string name="enable_in_windowed">Ativar em janela</string>
+    <string name="enable_in_fullscreen">Ativar em tela cheia</string>
+    <string name="brightness">Brilho</string>
+    <string name="volume">Volume</string>
+    <string name="background_mini_player">Plano de fundo &amp; Mini-player</string>
+    <string name="pip">Picture-in-Picture</string>
+    <string name="in_app_mini_player">Mini-player no app</string>
+    <string name="background_play">Reprodução em segundo plano</string>
+    <string name="sponsorblock">SponsorBlock</string>
+    <string name="skip_sponsors">Pular patrocinadores</string>
+    <string name="skip_sponsors_selfpromo">Pular autopromoção</string>
+    <string name="skip_sponsors_highlight">Pular destaques</string>
+    <string name="remember_last_position">Lembrar posição</string>
+    <string name="remember_quality">Lembrar qualidade do vídeo</string>
+    <string name="remember_playback_speed">Lembrar velocidade</string>
+    <string name="remember_resize_mode">Lembrar modo de ajuste</string>
+    <string name="reset_all_settings">Redefinir todas as configurações</string>
+    <string name="reset_extension_title">Redefinir extensões</string>
+    <string name="reset_extension_message">Redefinir todas as configurações de extensão para o padrão?</string>
+    <string name="confirm">Confirmar</string>
+    <string name="cancel">Cancelar</string>
+</resources>

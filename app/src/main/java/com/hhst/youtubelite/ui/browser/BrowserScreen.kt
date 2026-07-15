@@ -26,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -44,13 +45,17 @@ import com.hhst.youtubelite.browser.Bridge
 import com.hhst.youtubelite.browser.BrowserHost
 import com.hhst.youtubelite.browser.Tab
 import com.hhst.youtubelite.browser.WebViewFactory
+import com.hhst.youtubelite.extension.ExtensionManager
+import com.hhst.youtubelite.ui.extension.ExtensionScreen
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 /** Multi-tab WebView browser with a short fade + slide on tab switch. */
 @Composable
 fun BrowserScreen(
     viewModel: BrowserViewModel = koinViewModel(),
+    extensionManager: ExtensionManager = koinInject(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -58,14 +63,16 @@ fun BrowserScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val hosts = remember { mutableStateMapOf<Long, BrowserHost>() }
+    var showExtension by remember { mutableStateOf(false) }
     val activeId = uiState.activeId
     val forward = uiState.forward
     val tabs = uiState.tabs
     val tabIds = remember(tabs) { tabs.map { it.id }.toSet() }
+    val onOpenExtension = remember { { showExtension = true } }
 
     // Host create/destroy in effects so composition stays free of WebView side effects.
     LaunchedEffect(tabIds) {
-        createHosts(tabs, hosts, context, viewModel)
+        createHosts(tabs, hosts, context, viewModel, extensionManager, onOpenExtension)
         delay(TAB_DESTROY_DELAY_MS)
         hosts.keys.filter { it !in tabIds }.forEach { id ->
             hosts.remove(id)?.let { destroyHost(it) }
@@ -116,7 +123,7 @@ fun BrowserScreen(
     val exitHint = stringResource(R.string.back_again_to_exit)
     var lastFinishAt by remember { mutableLongStateOf(0L) }
     // Always consume Back. Decide from live WebView + live tab stack (not lagged ui flags).
-    BackHandler {
+    BackHandler(enabled = !showExtension) {
         val webView = latestHosts.value[latestActiveId.value]?.webView
         when (viewModel.onBack(webCanGoBack = webView?.canGoBack() == true)) {
             BackResult.GoWebBack -> {
@@ -189,6 +196,10 @@ fun BrowserScreen(
             visible = uiState.isLoading,
             modifier = Modifier.align(Alignment.TopCenter),
         )
+
+        if (showExtension) {
+            ExtensionScreen(onClose = { showExtension = false })
+        }
     }
 }
 
@@ -197,6 +208,8 @@ private fun createHosts(
     hosts: SnapshotStateMap<Long, BrowserHost>,
     context: Context,
     viewModel: BrowserViewModel,
+    extensionManager: ExtensionManager,
+    onOpenExtension: () -> Unit,
 ) {
     for (tab in tabs) {
         if (tab.id in hosts) continue
@@ -204,6 +217,8 @@ private fun createHosts(
         hosts[tabId] = WebViewFactory.create(
             context = context,
             callbacks = viewModel.callbacksFor(tabId),
+            extensionManager = extensionManager,
+            onOpenExtension = onOpenExtension,
             onRefresh = { webView ->
                 viewModel.onRefreshStarted(tabId)
                 webView.reload()
@@ -217,6 +232,7 @@ private fun destroyHost(host: BrowserHost) {
     val webView: WebView = host.webView
     webView.stopLoading()
     webView.removeJavascriptInterface(Bridge.NAME)
+    webView.removeJavascriptInterface("lite")
     webView.loadUrl("about:blank")
     (webView.parent as? ViewGroup)?.removeView(webView)
     (host.container.parent as? ViewGroup)?.removeView(host.container)

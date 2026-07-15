@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Litube</string>
+    <string name="back_again_to_exit">Erneut Zurück drücken zum Beenden</string>
+    <string name="navigate_back">Zurück</string>
+    <string name="extension">Erweiterungen</string>
+    <string name="display_dislikes">Dislikes anzeigen</string>
+    <string name="hide_shorts">Shorts ausblenden</string>
+    <string name="interface_category">Oberfläche</string>
+    <string name="player">Wiedergabe</string>
+    <string name="gesture">Gesten</string>
+    <string name="gesture_single_tap">Einfaches Tippen</string>
+    <string name="gesture_double_tap">Doppeltes Tippen</string>
+    <string name="gesture_long_press_speed">Langes Drücken 2x</string>
+    <string name="gesture_seek">Wischspulen</string>
+    <string name="gesture_fullscreen_swipe">Vollbild ein/aus</string>
+    <string name="enable_in_windowed">Im Fenstermodus aktivieren</string>
+    <string name="enable_in_fullscreen">Im Vollbild aktivieren</string>
+    <string name="brightness">Helligkeit</string>
+    <string name="volume">Lautstärke</string>
+    <string name="background_mini_player">Hintergrund &amp; Mini-Player</string>
+    <string name="pip">Bild-in-Bild</string>
+    <string name="in_app_mini_player">In-App-Mini-Player</string>
+    <string name="background_play">Hintergrundwiedergabe</string>
+    <string name="sponsorblock">SponsorBlock</string>
+    <string name="skip_sponsors">Sponsoren überspringen</string>
+    <string name="skip_sponsors_selfpromo">Eigenwerbung überspringen</string>
+    <string name="skip_sponsors_highlight">Highlights überspringen</string>
+    <string name="remember_last_position">Position merken</string>
+    <string name="remember_quality">Videoqualität merken</string>
+    <string name="remember_playback_speed">Geschwindigkeit merken</string>
+    <string name="remember_resize_mode">Anpassungsmodus merken</string>
+    <string name="reset_all_settings">Alle Einstellungen zurücksetzen</string>
+    <string name="reset_extension_title">Erweiterungen zurücksetzen</string>
+    <string name="reset_extension_message">Alle Erweiterungseinstellungen auf Standard zurücksetzen?</string>
+    <string name="confirm">Bestätigen</string>
+    <string name="cancel">Abbrechen</string>
+</resources>
