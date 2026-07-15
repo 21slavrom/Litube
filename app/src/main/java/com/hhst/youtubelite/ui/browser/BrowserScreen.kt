@@ -87,19 +87,19 @@ fun BrowserScreen(
         }
     }
 
-    val currentActiveId by rememberUpdatedState(activeId)
-    val currentHosts by rememberUpdatedState(hosts)
+    val latestHosts = rememberUpdatedState(hosts)
+    val latestActiveId = rememberUpdatedState(activeId)
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            val active = currentHosts[currentActiveId]?.webView
+            val active = latestHosts.value[latestActiveId.value]?.webView
             when (event) {
                 Lifecycle.Event.ON_RESUME -> {
                     active?.onResume()
                     active?.resumeTimers()
                 }
                 Lifecycle.Event.ON_PAUSE -> {
-                    currentHosts.values.forEach { it.webView.onPause() }
+                    latestHosts.value.values.forEach { it.webView.onPause() }
                     active?.pauseTimers()
                 }
                 else -> Unit
@@ -113,8 +113,6 @@ fun BrowserScreen(
         }
     }
 
-    val latestHosts = rememberUpdatedState(hosts)
-    val latestActiveId = rememberUpdatedState(activeId)
     val exitHint = stringResource(R.string.back_again_to_exit)
     var lastFinishAt by remember { mutableLongStateOf(0L) }
     // Always consume Back. Decide from live WebView + live tab stack (not lagged ui flags).
@@ -231,7 +229,7 @@ private fun Context.findActivity(): Activity? {
         if (ctx is Activity) return ctx
         ctx = ctx.baseContext
     }
-    return ctx as? Activity
+    return null
 }
 
 private const val TAB_FADE_MS = 180

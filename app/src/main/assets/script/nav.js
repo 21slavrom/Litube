@@ -66,34 +66,27 @@
     }
   }
 
-  function target(url) {
-    if (typeof url !== 'string') return null;
-    try {
-      const nextUrl = absolute(url);
-      return { url: nextUrl, kind: kind(nextUrl) };
-    } catch (e) {
-      return null;
-    }
-  }
-
   const originalPushState = history.pushState;
   const originalReplaceState = history.replaceState;
 
+  // Opens [url] in a new tab unless it matches [location.href]'s kind.
+  // Returns true when routed cross-tab, false to let navigation proceed in-page.
   function maybeOpen(url) {
-    const t = target(url);
-    if (!t || !t.kind || t.kind === 'unknown') return false;
-    if (t.kind === kind(location.href)) return false;
-    openTab(t.url);
+    if (typeof url !== 'string') return false;
+    const nextUrl = absolute(url);
+    const nextKind = kind(nextUrl);
+    if (nextKind === 'unknown' || nextKind === kind(location.href)) return false;
+    openTab(nextUrl);
     return true;
   }
 
   history.pushState = function (data, title, url) {
-    if (url != null && maybeOpen(String(url))) return;
+    if (url != null && maybeOpen(url)) return;
     return originalPushState.apply(this, arguments);
   };
 
   history.replaceState = function (data, title, url) {
-    if (url != null && maybeOpen(String(url))) return;
+    if (url != null && maybeOpen(url)) return;
     return originalReplaceState.apply(this, arguments);
   };
 
@@ -114,12 +107,9 @@
     }
     if (!href) return;
 
-    const nextUrl = absolute(href);
-    const nextKind = kind(nextUrl);
-    if (nextKind === kind(location.href) || nextKind === 'unknown') return;
-
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    openTab(nextUrl);
+    if (maybeOpen(href)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
   }, true);
 })();

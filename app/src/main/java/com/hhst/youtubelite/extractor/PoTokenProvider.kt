@@ -56,7 +56,48 @@ class PoTokenProvider(
         if (Looper.myLooper() == Looper.getMainLooper()) return null
         return synchronized(mintLock) {
             cache[videoId]?.let { return it }
-            runCatching { mintInternal(videoId) }
+            runCatching {
+                // Wait for the host WebView + potoken.js before minting.
+                initialize()
+                val deadline = System.currentTimeMillis() + INIT_MS
+                synchronized(readyLock) {
+                    while (!ready) {
+                        val left = deadline - System.currentTimeMillis()
+                        if (left <= 0) return@runCatching null
+                        try {
+                            readyLock.wait(left)
+                        } catch (_: InterruptedException) {
+                            Thread.currentThread().interrupt()
+                            return@runCatching null
+                        }
+                    }
+                }
+                val hasPoToken = eval(
+                    "(function(){try{return window.__poToken?'ok':'no'}catch(e){return 'err'}})()",
+                    INIT_MS,
+                )
+                if (hasPoToken != "ok") return@runCatching null
+
+                if (!integrityReady && !initIntegrity()) return@runCatching null
+
+                val visitor = runCatching {
+                    val info = InnertubeClientRequestInfo.ofWebClient()
+                    info.clientInfo.clientVersion = YoutubeParsingHelper.getClientVersion()
+                    YoutubeParsingHelper.getVisitorDataFromInnertube(
+                        info,
+                        Localization.DEFAULT,
+                        ContentCountry.DEFAULT,
+                        YoutubeParsingHelper.getYouTubeHeaders(),
+                        YoutubeParsingHelper.YOUTUBEI_V1_URL,
+                        null,
+                        false,
+                    )
+                }.getOrNull() ?: return@runCatching null
+
+                val player = mintToken(videoId) ?: return@runCatching null
+                val streaming = mintToken(visitor) ?: player
+                PoTokenResult(visitor, player, streaming).also { cache[videoId] = it }
+            }
                 .onFailure { Log.w(TAG, "mint failed for $videoId", it) }
                 .getOrNull()
         }
@@ -77,16 +118,6 @@ class PoTokenProvider(
         }
     }
 
-    /** Mints a WEB poToken for [videoId] and caches it. Not for the main thread. */
-    private fun mintInternal(videoId: String): PoTokenResult? {
-        if (!awaitReady(INIT_MS)) return null
-        if (!integrityReady && !initIntegrity()) return null
-        val visitor = fetchVisitorData() ?: return null
-        val player = mintToken(videoId) ?: return null
-        val streaming = mintToken(visitor) ?: player
-        return PoTokenResult(visitor, player, streaming).also { cache[videoId] = it }
-    }
-
     private fun initIntegrity(): Boolean {
         val createBody = JsonArray().apply { add(REQUEST_KEY) }
         val createResp = botguardPost(
@@ -94,15 +125,10 @@ class PoTokenProvider(
             createBody.toString(),
         ) ?: return false
 
-        val requestId = nextId("init")
-        val deferred = prepare(requestId)
-        val queued = eval(
-            "(function(){try{window.__poToken.runInit(${jsString(createResp)},${jsString(requestId)});" +
-                "return 'ok'}catch(e){return 'err:'+e}})()",
-            INIT_MS,
-        )
-        if (queued != "ok") return false
-        val botguard = await(deferred, INIT_MS) ?: return false
+        val botguard = bridgeCall(INIT_MS) { id ->
+            "(function(){try{window.__poToken.runInit(${jsString(createResp)},${jsString(id)});" +
+                "return 'ok'}catch(e){return 'err:'+e}})()"
+        } ?: return false
 
         val genBody = JsonArray().apply {
             add(REQUEST_KEY)
@@ -126,31 +152,27 @@ class PoTokenProvider(
         return integrityReady
     }
 
-    private fun mintToken(identifier: String): String? {
-        val requestId = nextId("mint")
-        val deferred = prepare(requestId)
-        val queued = eval(
-            "(function(){try{window.__poToken.mint(${jsString(identifier)},${jsString(requestId)});" +
-                "return 'ok'}catch(e){return 'err'}})()",
-            MINT_MS,
-        )
-        if (queued != "ok") return null
-        return await(deferred, MINT_MS)
+    private fun mintToken(identifier: String): String? = bridgeCall(MINT_MS) { id ->
+        "(function(){try{window.__poToken.mint(${jsString(identifier)},${jsString(id)});" +
+            "return 'ok'}catch(e){return 'err'}})()"
     }
 
-    private fun fetchVisitorData(): String? = runCatching {
-        val info = InnertubeClientRequestInfo.ofWebClient()
-        info.clientInfo.clientVersion = YoutubeParsingHelper.getClientVersion()
-        YoutubeParsingHelper.getVisitorDataFromInnertube(
-            info,
-            Localization.DEFAULT,
-            ContentCountry.DEFAULT,
-            YoutubeParsingHelper.getYouTubeHeaders(),
-            YoutubeParsingHelper.YOUTUBEI_V1_URL,
-            null,
-            false,
-        )
-    }.getOrNull()
+    /**
+     * Eval [script] (which must return "ok" when queued) then wait for Bridge
+     * onSuccess/onError for the generated request id.
+     */
+    private fun bridgeCall(timeoutMs: Long, script: (requestId: String) -> String): String? {
+        val requestId = requestSeq.incrementAndGet().toString()
+        val deferred = CompletableDeferred<String>()
+        pending.put(requestId, deferred)?.cancel()
+        if (eval(script(requestId), timeoutMs) != "ok") {
+            pending.remove(requestId)?.cancel()
+            return null
+        }
+        return runBlocking {
+            withTimeoutOrNull(timeoutMs.milliseconds) { deferred.await() }
+        }
+    }
 
     private fun botguardPost(url: String, jsonBody: String): String? {
         val request = Request.Builder()
@@ -196,27 +218,6 @@ class PoTokenProvider(
         )
     }
 
-    private fun awaitReady(timeoutMs: Long): Boolean {
-        initialize()
-        val deadline = System.currentTimeMillis() + timeoutMs
-        synchronized(readyLock) {
-            while (!ready) {
-                val left = deadline - System.currentTimeMillis()
-                if (left <= 0) return false
-                try {
-                    readyLock.wait(left)
-                } catch (_: InterruptedException) {
-                    Thread.currentThread().interrupt()
-                    return false
-                }
-            }
-        }
-        return eval(
-            "(function(){try{return window.__poToken?'ok':'no'}catch(e){return 'err'}})()",
-            timeoutMs,
-        ) == "ok"
-    }
-
     private fun eval(script: String, timeoutMs: Long): String? {
         val deferred = CompletableDeferred<String?>()
         mainHandler.post {
@@ -224,26 +225,29 @@ class PoTokenProvider(
             if (view == null) {
                 deferred.complete(null)
             } else {
-                view.evaluateJavascript(script) { raw -> deferred.complete(unwrapJs(raw)) }
+                view.evaluateJavascript(script) { raw ->
+                    if (raw == null || raw == "null") {
+                        deferred.complete(null)
+                        return@evaluateJavascript
+                    }
+                    deferred.complete(
+                        runCatching {
+                            val el = JsonParser.parseString(raw)
+                            when {
+                                el.isJsonNull -> null
+                                el.isJsonPrimitive && el.asJsonPrimitive.isString -> el.asString
+                                el.isJsonPrimitive -> el.asJsonPrimitive.toString()
+                                else -> el.toString()
+                            }
+                        }.getOrDefault(raw),
+                    )
+                }
             }
         }
         return runBlocking {
             withTimeoutOrNull(timeoutMs.milliseconds) { deferred.await() }
         }
     }
-
-    private fun prepare(id: String): CompletableDeferred<String> {
-        val deferred = CompletableDeferred<String>()
-        pending.put(id, deferred)?.cancel()
-        return deferred
-    }
-
-    private fun await(deferred: CompletableDeferred<String>, timeoutMs: Long): String? =
-        runBlocking {
-            withTimeoutOrNull(timeoutMs.milliseconds) { deferred.await() }
-        }
-
-    private fun nextId(prefix: String): String = "$prefix-${requestSeq.incrementAndGet()}"
 
     private inner class Bridge {
         @JavascriptInterface
@@ -275,18 +279,5 @@ class PoTokenProvider(
                 .replace("\"", "\\\"")
                 .replace("\n", "\\n")
                 .replace("\r", "\\r") + "\""
-
-        fun unwrapJs(raw: String?): String? {
-            if (raw == null || raw == "null") return null
-            return runCatching {
-                val el = JsonParser.parseString(raw)
-                when {
-                    el.isJsonNull -> null
-                    el.isJsonPrimitive && el.asJsonPrimitive.isString -> el.asString
-                    el.isJsonPrimitive -> el.asJsonPrimitive.toString()
-                    else -> el.toString()
-                }
-            }.getOrDefault(raw)
-        }
     }
 }

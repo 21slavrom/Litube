@@ -1,8 +1,6 @@
 package com.hhst.youtubelite.extractor
 
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.services.youtube.PoTokenProvider as NpPoTokenProvider
 import org.schabi.newpipe.extractor.services.youtube.extractors.YoutubeStreamExtractor
@@ -19,7 +17,7 @@ class Extractor(
     private val cache: Cache,
     poToken: NpPoTokenProvider? = null,
     private val clientOrder: ClientOrderStore? = null,
-    private val scope: CoroutineScope = DEFAULT_SCOPE,
+    private val scope: CoroutineScope = Promise.DEFAULT_SCOPE,
 ) {
     private val inFlight = ConcurrentHashMap<String, Extraction>()
 
@@ -65,10 +63,5 @@ class Extractor(
 
             extraction
         }
-    }
-
-    private companion object {
-        val DEFAULT_SCOPE: CoroutineScope =
-            CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }
 }
