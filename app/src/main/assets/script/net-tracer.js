@@ -1,0 +1,121 @@
+(() => {
+  'use strict';
+  if (window.__nt) return;
+  window.__nt = true;
+
+  const SLOW = 500;
+  const MAX_URL = 512;
+  let seq = 0;
+
+  function clip(s) {
+    s = String(s || '');
+    return s.length > MAX_URL ? s.slice(0, MAX_URL) + '…' : s;
+  }
+
+  function noise(url, src) {
+    const u = String(url || '').toLowerCase();
+    const s = String(src || '');
+    if (!u) return true;
+    if (u.includes('doubleclick') || u.includes('googleads') || u.includes('/pagead/') ||
+        u.includes('pcs/activeview') || u.includes('pagead/')) return true;
+    if (u.includes('play.google.com/log')) return true;
+    if (u.includes('/s/search/audio/') || u.includes('generate_204')) return true;
+    if (u.includes('/api/stats/') || u.includes('youtubei/v1/log_event')) return true;
+    if (u.includes('googlevideo.com') || u.includes('videoplayback')) return true;
+    if (u.includes('accounts.google.com') || u.includes('/js/th/')) return true;
+    if (u.includes('/s/_/ytmweb/_/js/')) return true;
+    if (s.indexOf('res:') === 0) return true;
+    return false;
+  }
+
+  function emit(hit) {
+    if (noise(hit.url, hit.src)) return;
+    hit.id = ++seq;
+    hit.ts = Date.now();
+    try {
+      if (window.NetTrace && typeof window.NetTrace.onHit === 'function') {
+        window.NetTrace.onHit(JSON.stringify(hit));
+      }
+    } catch {}
+    const tag = hit.ms >= SLOW ? 'SLOW' : 'ok';
+    const line = `[NetTracer:${tag}] ${hit.method} ${hit.ms}ms #${hit.status} ${hit.src} ${clip(hit.url)}`;
+    if (hit.ms >= SLOW) console.warn(line);
+    else console.debug(line);
+  }
+
+  function now() {
+    return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  }
+
+  const _fetch = window.fetch;
+  if (typeof _fetch === 'function') {
+    window.fetch = function (input, init) {
+      const t0 = now();
+      let url = '';
+      let method = 'GET';
+      try {
+        if (typeof input === 'string') url = input;
+        else if (input && input.url) url = input.url;
+        method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+      } catch {}
+
+      return _fetch.apply(this, arguments).then((res) => {
+        emit({
+          src: 'fetch',
+          method,
+          url: clip(url),
+          status: res ? res.status : 0,
+          ms: Math.round(now() - t0),
+          ok: !!(res && res.ok),
+        });
+        return res;
+      }, (err) => {
+        emit({
+          src: 'fetch',
+          method,
+          url: clip(url),
+          status: 0,
+          ms: Math.round(now() - t0),
+          ok: false,
+          err: String(err && err.message || err),
+        });
+        throw err;
+      });
+    };
+  }
+
+  const XO = XMLHttpRequest.prototype;
+  const _open = XO.open;
+  const _send = XO.send;
+
+  XO.open = function (method, url) {
+    this.__nt = {
+      method: String(method || 'GET').toUpperCase(),
+      url: clip(url),
+      t0: 0,
+    };
+    return _open.apply(this, arguments);
+  };
+
+  XO.send = function () {
+    const meta = this.__nt || { method: 'GET', url: '', t0: 0 };
+    meta.t0 = now();
+    let once = false;
+    const done = () => {
+      if (once) return;
+      once = true;
+      emit({
+        src: 'xhr',
+        method: meta.method,
+        url: meta.url,
+        status: this.status || 0,
+        ms: Math.round(now() - meta.t0),
+        ok: this.status >= 200 && this.status < 400,
+      });
+    };
+    this.addEventListener('loadend', done);
+    this.addEventListener('error', done);
+    this.addEventListener('abort', done);
+    return _send.apply(this, arguments);
+  };
+})();

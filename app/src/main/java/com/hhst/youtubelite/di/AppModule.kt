@@ -11,6 +11,9 @@ import com.hhst.youtubelite.extractor.ClientOrderStore
 import com.hhst.youtubelite.extractor.DiskCache
 import com.hhst.youtubelite.extractor.Extractor
 import com.hhst.youtubelite.extractor.HttpDownloader
+import com.hhst.youtubelite.extractor.LayeredCache
+import com.hhst.youtubelite.extractor.MemCache
+import com.hhst.youtubelite.extractor.PlayerCache
 import com.hhst.youtubelite.extractor.PoTokenProvider
 import com.hhst.youtubelite.ui.browser.BrowserViewModel
 import com.hhst.youtubelite.ui.extension.ExtensionViewModel
@@ -34,12 +37,19 @@ val appModule = module {
     single { Gson() }
     single { MMKV.defaultMMKV() }
     single<JsonCache> { MmkvJsonCache(kv = get(), gson = get()) }
-    single<Cache> { DiskCache(store = get()) }
+    single { MemCache() }
+    single { PlayerCache() }
+    single<Cache> {
+        LayeredCache(
+            mem = get<MemCache>(),
+            disk = DiskCache(store = get()),
+        )
+    }
     single { ClientOrderStore(kv = get()) }
     single<PrefStore> { MmkvPrefStore(get()) }
     single { ExtensionManager(get()) }
 
-    single { HttpDownloader(get()) }
+    single { HttpDownloader(get(), get<PlayerCache>()) }
     single { PoTokenProvider(androidContext(), get()) }
     single {
         Extractor(

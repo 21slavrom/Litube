@@ -46,6 +46,9 @@ import com.hhst.youtubelite.browser.BrowserHost
 import com.hhst.youtubelite.browser.Tab
 import com.hhst.youtubelite.browser.WebViewFactory
 import com.hhst.youtubelite.extension.ExtensionManager
+import com.hhst.youtubelite.extractor.Extractor
+import com.hhst.youtubelite.extractor.PlayerCache
+import com.hhst.youtubelite.net.NetTracer
 import com.hhst.youtubelite.ui.extension.ExtensionScreen
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
@@ -56,6 +59,8 @@ import org.koin.compose.koinInject
 fun BrowserScreen(
     viewModel: BrowserViewModel = koinViewModel(),
     extensionManager: ExtensionManager = koinInject(),
+    extractor: Extractor = koinInject(),
+    playerCache: PlayerCache = koinInject(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -72,7 +77,7 @@ fun BrowserScreen(
 
     // Host create/destroy in effects so composition stays free of WebView side effects.
     LaunchedEffect(tabIds) {
-        createHosts(tabs, hosts, context, viewModel, extensionManager, onOpenExtension)
+        createHosts(tabs, hosts, context, viewModel, extensionManager, onOpenExtension, extractor, playerCache)
         delay(TAB_DESTROY_DELAY_MS)
         hosts.keys.filter { it !in tabIds }.forEach { id ->
             hosts.remove(id)?.let { destroyHost(it) }
@@ -210,6 +215,8 @@ private fun createHosts(
     viewModel: BrowserViewModel,
     extensionManager: ExtensionManager,
     onOpenExtension: () -> Unit,
+    extractor: Extractor,
+    playerCache: PlayerCache,
 ) {
     for (tab in tabs) {
         if (tab.id in hosts) continue
@@ -223,6 +230,8 @@ private fun createHosts(
                 viewModel.onRefreshStarted(tabId)
                 webView.reload()
             },
+            extractor = extractor,
+            playerCache = playerCache,
         ).also { it.webView.loadUrl(tab.url) }
     }
 }
@@ -233,6 +242,7 @@ private fun destroyHost(host: BrowserHost) {
     webView.stopLoading()
     webView.removeJavascriptInterface(Bridge.NAME)
     webView.removeJavascriptInterface("lite")
+    webView.removeJavascriptInterface(NetTracer.JS_NAME)
     webView.loadUrl("about:blank")
     (webView.parent as? ViewGroup)?.removeView(webView)
     (host.container.parent as? ViewGroup)?.removeView(host.container)

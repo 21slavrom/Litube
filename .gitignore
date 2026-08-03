@@ -1,11 +1,12 @@
 .gradle/
 .gradle-user-home/
 .android-user-home/
+.codegraph/
 .android/
 .kotlin/
 .idea/
-.vscode/
 build/
+external/
 **/build/
 out/
 release/
@@ -17,3 +18,5 @@ local.properties
 *.iws
 *.ipr
 *.patch
+
+scripts/
